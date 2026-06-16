@@ -316,8 +316,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>⚡ ZENITSU BOT PRO</h1>
-            <p class="subtitle">Dashboard Professionnel • Gestion de Bots WhatsApp</p>
+            <h1>⚡ 𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 𝐏𝐫𝐨</h1>
+            <p class="subtitle">Dashboard</p>
         </div>
         
         <div class="stats-grid">
@@ -331,28 +331,28 @@
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="commands">0</div>
-                <div class="stat-label">⚡ Commandes</div>
+                <div class="stat-label">⚡ Commands</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="subbots">0/50</div>
-                <div class="stat-label">🤖 Sous-bots</div>
+                <div class="stat-label">🤖 Subbots</div>
             </div>
         </div>
         
         <div class="main-content">
             <div class="control-panel">
-                <h2>🎮 Connecter un Sous-bot</h2>
+                <h2>Connect </h2>
                 
                 <div class="info-box">
-                    📱 <strong>Comment ça marche ?</strong><br>
-                    1. Entrez le numéro de téléphone avec l'indicatif<br>
-                    2. Cliquez sur "Connecter"<br>
-                    3. Un code de jumelage s'affichera ci-dessous<br>
-                    4. Entrez ce code dans WhatsApp → Appareils liés
+                    📱 <strong>How it work ?</strong><br>
+                    1. Enter your phone number<br>
+                    2. Click to "Connect"<br>
+                    3. The pair code will appear here<br>
+                    4. Enter the code in WhatsApp → Linked devices
                 </div>
                 
                 <div class="form-group">
-                    <label>📞 Numéro de téléphone</label>
+                    <label>📞 Phone number</label>
                     <input 
                         type="text" 
                         id="phoneNumber" 
@@ -362,32 +362,32 @@
                 </div>
                 
                 <button class="btn btn-connect" onclick="connectSubbot()">
-                    🔗 Connecter le Sous-bot
+                    🔗 Connect
                 </button>
                 
                 <button class="btn btn-refresh" onclick="refreshStats()">
-                    🔄 Rafraîchir
+                    🔄 Refresh
                 </button>
                 
                 <div id="pairCodeArea" style="margin-top: 20px;"></div>
                 
                 <div class="logs" style="margin-top: 20px; max-height: 300px;">
-                    <div style="color: #667eea; margin-bottom: 15px;">📋 Logs en Direct</div>
+                    <div style="color: #667eea; margin-bottom: 15px;">📋 Logs onLine</div>
                     <div id="logs">
                         <div class="log-entry">
-                            <span class="log-time">[Système]</span> Dashboard initialisé...
+                            <span class="log-time">[Système]</span> Dashboard initialised...
                         </div>
                     </div>
                 </div>
             </div>
             
             <div class="panel">
-                <h2>🤖 Sous-bots Connectés</h2>
+                <h2>🤖 Bots</h2>
                 <div class="subbot-list" id="subbotList">
                     <div class="empty-state">
                         <div class="icon">🤖</div>
-                        <p>Aucun sous-bot connecté</p>
-                        <p style="font-size: 0.9em; margin-top: 5px;">Utilisez le formulaire pour en connecter un</p>
+                        <p>No bot here</p>
+                        <p style="font-size: 0.9em; margin-top: 5px;">Use the form to connect a Bot</p>
                     </div>
                 </div>
             </div>
@@ -424,8 +424,8 @@
             const phoneNumber = document.getElementById('phoneNumber').value.trim();
             
             if (!phoneNumber) {
-                addLog('❌ Veuillez entrer un numéro de téléphone', 'error');
-                alert('Veuillez entrer un numéro de téléphone');
+                addLog('❌ Please add a phone number', 'error');
+                alert('Add your phone number');
                 return;
             }
             
@@ -433,18 +433,18 @@
             const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
             
             if (cleanNumber.length < 7 || cleanNumber.length > 15) {
-                addLog('❌ Numéro de téléphone invalide', 'error');
-                alert('Numéro de téléphone invalide (7-15 chiffres)');
+                addLog('❌ Invalid number', 'error');
+                alert('Phone number invalid (7-15 number)');
                 return;
             }
             
             if (subbots.has(cleanNumber)) {
-                addLog(`⚠️ Le sous-bot ${cleanNumber} est déjà connecté`, 'warning');
-                alert('Ce sous-bot est déjà connecté');
+                addLog(`⚠️ Bot  ${cleanNumber} is already connected`, 'warning');
+                alert('This socket is already connected');
                 return;
             }
             
-            addLog(`🔗 Demande de connexion pour le sous-bot ${cleanNumber}...`);
+            addLog(`Connecting ${cleanNumber}...`);
             
             // Envoyer la demande au serveur
             socket.emit('connect_subbot', { 
@@ -455,25 +455,25 @@
             // Désactiver le bouton temporairement
             const btn = document.querySelector('.btn-connect');
             btn.disabled = true;
-            btn.textContent = '⏳ Connexion en cours...';
+            btn.textContent = '⏳ Connexion...';
             
             setTimeout(() => {
                 btn.disabled = false;
-                btn.textContent = '🔗 Connecter le Sous-bot';
+                btn.textContent = '🔗 Connect  : ';
             }, 10000);
         }
         
         function restartSubbot(number) {
-            if (confirm(`Voulez-vous redémarrer le sous-bot ${number} ?`)) {
+            if (confirm(`Confirm to restart  ${number} `)) {
                 socket.emit('restart_subbot', { number });
-                addLog(`🔄 Redémarrage du sous-bot ${number}...`, 'warning');
+                addLog(`🔄 Restarting ${number}...`, 'warning');
             }
         }
         
         function disconnectSubbot(number) {
-            if (confirm(`Voulez-vous vraiment déconnecter le sous-bot ${number} ?`)) {
+            if (confirm(`Do you want to disconnect ${number} ?`)) {
                 socket.emit('disconnect_subbot', { number });
-                addLog(`🗑️ Déconnexion du sous-bot ${number}...`, 'warning');
+                addLog(`🗑️ Déconnexion ${number}...`, 'warning');
                 
                 // Supprimer la carte
                 const card = document.getElementById(`subbot-${number}`);
@@ -495,17 +495,17 @@
             pairArea.innerHTML = `
                 <div style="background: white; padding: 20px; border-radius: 15px; text-align: center;">
                     <div style="color: #333; margin-bottom: 15px; font-weight: bold;">
-                        🔑 CODE DE JUMELAGE
+                        🔑 CODE
                     </div>
                     <div style="font-size: 2em; font-weight: bold; color: #667eea; letter-spacing: 5px; margin: 15px 0;">
                         ${formattedCode}
                     </div>
                     <div style="color: #666; font-size: 0.9em; margin-top: 15px;">
-                        📱 Numéro : +${number}<br>
-                        ⚡ Ouvrez WhatsApp → Appareils liés → Lier avec un numéro
+                        📱 Number : +${number}<br>
+                        ⚡ Open WhatsApp → Linked devices → Link with phone number
                     </div>
                     <div style="margin-top: 10px; color: #999; font-size: 0.8em;">
-                        Ce code expire dans quelques minutes
+                        This code will disapear after 2 minutes
                     </div>
                 </div>
             `;
@@ -536,7 +536,7 @@
                     </div>
                     <div class="subbot-actions">
                         <button class="btn btn-sm btn-restart" onclick="restartSubbot('${number}')">🔄 Restart</button>
-                        <button class="btn btn-sm btn-disconnect" onclick="disconnectSubbot('${number}')">✕ Déconnecter</button>
+                        <button class="btn btn-sm btn-disconnect" onclick="disconnectSubbot('${number}')">✕ Disconnect</button>
                     </div>
                     <div id="qr-${number}"></div>
                 `;
@@ -549,11 +549,11 @@
             switch(status) {
                 case 'connected':
                     statusBadge.classList.add('status-connected');
-                    statusBadge.textContent = '🟢 Connecté';
+                    statusBadge.textContent = '🟢 Connected';
                     break;
                 case 'qr':
                     statusBadge.classList.add('status-qr');
-                    statusBadge.textContent = '📱 En attente du code';
+                    statusBadge.textContent = '📱 Waiting ...';
                     break;
                 case 'connecting':
                     statusBadge.classList.add('status-qr');
@@ -561,7 +561,7 @@
                     break;
                 case 'disconnected':
                     statusBadge.classList.add('status-disconnected');
-                    statusBadge.textContent = '🔴 Déconnecté';
+                    statusBadge.textContent = '🔴 Disconnected';
                     break;
                 default:
                     statusBadge.classList.add('status-qr');
@@ -574,7 +574,7 @@
                 qrDiv.innerHTML = `
                     <div class="qr-container">
                         <div style="color: #333; font-weight: bold; margin-bottom: 10px;">
-                            📱 Scannez ce QR Code
+                            📱 Scan this qr
                         </div>
                         <img src="${data.qr}" alt="QR Code">
                     </div>
@@ -590,8 +590,8 @@
                 listDiv.innerHTML = `
                     <div class="empty-state">
                         <div class="icon">🤖</div>
-                        <p>Aucun sous-bot connecté</p>
-                        <p style="font-size: 0.9em; margin-top: 5px;">Utilisez le formulaire pour en connecter un</p>
+                        <p>No bot</p>
+                        <p style="font-size: 0.9em; margin-top: 5px;">Use the form to connect </p>
                     </div>
                 `;
             }
@@ -602,10 +602,10 @@
                 .then(res => res.json())
                 .then(data => {
                     updateStats(data);
-                    addLog('📊 Stats rafraîchies', 'success');
+                    addLog('📊 updated stats ', 'success');
                 })
                 .catch(() => {
-                    addLog('❌ Erreur lors du rafraîchissement', 'error');
+                    addLog('❌ Error while updating', 'error');
                 });
         }
         
@@ -615,18 +615,18 @@
         });
         
         socket.on('subbot_connecting', (data) => {
-            addLog(`🔗 Connexion du sous-bot ${data.number}...`);
+            addLog(`🔗 Connexion  ${data.number}...`);
             updateSubbotCard(data.number, 'connecting');
         });
         
         socket.on('subbot_qr', (data) => {
-            addLog(`📱 Code de jumelage reçu pour ${data.number}`, 'success');
+            addLog(`📱 Code for  ${data.number}`, 'success');
             showPairCode(data.number, data.code);
             updateSubbotCard(data.number, 'qr');
         });
         
         socket.on('subbot_connected', (data) => {
-            addLog(`✅ Sous-bot ${data.number} connecté avec succès !`, 'success');
+            addLog(`✅ ${data.number} connected succefully !`, 'success');
             updateSubbotCard(data.number, 'connected');
             
             // Effacer le code de jumelage après connexion
@@ -639,20 +639,20 @@
         });
         
         socket.on('subbot_disconnected', (data) => {
-            addLog(`⚠️ Sous-bot ${data.number} déconnecté`, 'warning');
+            addLog(`⚠️ ${data.number} disconnected`, 'warning');
             updateSubbotCard(data.number, 'disconnected');
         });
         
         socket.on('subbot_reconnecting', (data) => {
-            addLog(`🔄 Reconnexion du sous-bot ${data.number} (tentative ${data.attempt}/${data.maxRetries})`, 'warning');
+            addLog(`🔄 Reconnection ${data.number} (attemps ${data.attempt}/${data.maxRetries})`, 'warning');
         });
         
         socket.on('subbot_error', (data) => {
-            addLog(`❌ Erreur sous-bot ${data.number}: ${data.error}`, 'error');
+            addLog(`❌ Error  ${data.number}: ${data.error}`, 'error');
         });
         
         socket.on('subbot_removed', (data) => {
-            addLog(`🗑️ Sous-bot ${data.number} supprimé (${data.reason})`, 'warning');
+            addLog(`🗑️  ${data.number} deleted (${data.reason})`, 'warning');
             const card = document.getElementById(`subbot-${data.number}`);
             if (card) card.remove();
             subbots.delete(data.number);
@@ -660,12 +660,12 @@
         });
         
         socket.on('subbot_restarting', (data) => {
-            addLog(`🔄 Redémarrage du sous-bot ${data.number}...`, 'warning');
+            addLog(`🔄 Restarting ${data.number}...`, 'warning');
             updateSubbotCard(data.number, 'connecting');
         });
         
         socket.on('subbot_failed', (data) => {
-            addLog(`❌ Échec définitif du sous-bot ${data.number}`, 'error');
+            addLog(`❌ high Error with ${data.number}`, 'error');
             const card = document.getElementById(`subbot-${data.number}`);
             if (card) card.remove();
             subbots.delete(data.number);
@@ -673,11 +673,11 @@
         });
         
         socket.on('main_connected', (data) => {
-            addLog(`✅ Bot principal connecté: ${data.jid}`, 'success');
+            addLog(`✅Main bot connected: ${data.jid}`, 'success');
         });
         
         socket.on('main_disconnected', (data) => {
-            addLog(`⚠️ Bot principal déconnecté`, 'warning');
+            addLog(`⚠️ Main disconnected`, 'warning');
         });
         
         socket.on('notification', (data) => {
@@ -704,11 +704,11 @@
                         updateSubbotCard(bot.number, bot.connected ? 'connected' : 'disconnected');
                     });
                 }
-                addLog('🚀 Dashboard chargé avec succès', 'success');
+                addLog('🚀 Dashboard succefully started', 'success');
             })
             .catch(err => addLog('Erreur chargement stats: ' + err.message, 'error'));
         
-        addLog('🟢 Dashboard ZENITSU BOT PRO ready', 'success');
+        addLog('🟢 Dashboard 𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 ready', 'success');
     </script>
 </body>
 </html>

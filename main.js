@@ -233,8 +233,6 @@ async function sendOwnerNotification(sock) {
       image: { url: 'https://files.catbox.moe/uklx8n.jpg' },
       caption:
         `👑 *${CONFIG.botName} BOT CONNECTÉ*\n` +
-        `📡 Status : ONLINE\n` +
-        `⚡ Actif 24/7\n` +
         `🕒 ${new Date().toLocaleTimeString()}\n` +
         `📊 ${commands.size} commandes\n` +
         `Prefix = ${CONFIG.PREFIX}`,
@@ -245,7 +243,7 @@ async function sendOwnerNotification(sock) {
         forwardedNewsletterMessageInfo: {
           newsletterJid: '120363425394543602@newsletter',
           newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
-          serverMessageId: 195,
+          serverMessageId: 202,
         },
       },
     });
@@ -577,7 +575,7 @@ async function handleUniversal(sock, msg, text, jid) {
     const targetNumber = args[1];
     if (!targetNumber || !/^\+?[0-9]{7,15}$/.test(targetNumber)) {
       await safeSendMessage(sock, jid, {
-        text: `❌ Usage : *restart <numéro>*\nRedémarre un sous-bot connecté`,
+        text: `❌ Usage : *restart <numéro>*\n`,
       }, { quoted: msg });
       return true;
     }
@@ -912,7 +910,7 @@ app.get('/ping', (req, res) => {
 // Socket.IO pour la communication en temps réel
 // Socket.IO pour la communication en temps réel
 io.on('connection', (socket) => {
-  info(`🔌 Client web connecté: ${socket.id}`);
+  info(`🔌 Web user connected: ${socket.id}`);
   socketConnections.add(socket);
 
   // Envoyer les stats actuelles
@@ -931,7 +929,7 @@ io.on('connection', (socket) => {
     if (!number) {
       socket.emit('subbot_error', { 
         number: 'unknown', 
-        error: 'Numéro invalide' 
+        error: 'Invalid number' 
       });
       return;
     }
@@ -939,7 +937,7 @@ io.on('connection', (socket) => {
     if (!mainSock) {
       socket.emit('subbot_error', { 
         number, 
-        error: 'Bot principal non disponible. Veuillez patienter...' 
+        error: 'Main bot unavailable . Wait...' 
       });
       return;
     }
@@ -947,13 +945,13 @@ io.on('connection', (socket) => {
     if (subBots.has(number)) {
       socket.emit('notification', { 
         type: 'warning', 
-        message: `Le sous-bot ${number} est déjà connecté` 
+        message: `${number} is Already connected` 
       });
       return;
     }
     
     socket.emit('subbot_connecting', { number });
-    info(`🌐 Demande web de connexion sous-bot: ${number}`);
+    info(`🌐 Connexion : ${number}`);
     
     try {
       await connectSubBot(CONFIG.OWNER_JID, phoneNumber || number, mainSock);
@@ -968,8 +966,8 @@ io.on('connection', (socket) => {
     const { number } = data;
     if (!number || !subBots.has(number)) {
       socket.emit('notification', { 
-        type: 'error', 
-        message: `Sous-bot ${number} introuvable` 
+        type: 'error',
+        message: ` ${number} not found` 
       });
       return;
     }
@@ -977,14 +975,14 @@ io.on('connection', (socket) => {
     socket.emit('subbot_restarting', { number });
     socket.emit('notification', { 
       type: 'info', 
-      message: `Redémarrage du sous-bot ${number}...` 
+      message: `Restartinng ( ${number} ) ...` 
     });
     
     try {
       await restartSubBot(number, CONFIG.OWNER_JID, mainSock);
       socket.emit('notification', { 
         type: 'success', 
-        message: `Sous-bot ${number} redémarré avec succès` 
+        message: ` ${number} succefully restarted` 
       });
     } catch (e) {
       socket.emit('subbot_error', { number, error: e.message });
@@ -997,7 +995,7 @@ io.on('connection', (socket) => {
     if (!number) {
       socket.emit('notification', { 
         type: 'error', 
-        message: 'Numéro de sous-bot requis' 
+        message: 'Number required.' 
       });
       return;
     }
@@ -1005,12 +1003,12 @@ io.on('connection', (socket) => {
     const done = await disconnectSubBot(number);
     socket.emit('notification', { 
       type: done ? 'success' : 'error', 
-      message: done ? `Sous-bot ${number} déconnecté` : `Échec déconnexion ${number}` 
+      message: done ? `${number} déconnected` : `Error while connecting ${number}` 
     });
   });
 
   socket.on('disconnect', () => {
-    info(`🔌 Client web déconnecté: ${socket.id}`);
+    info(`🔌 Web client disconnectef: ${socket.id}`);
     socketConnections.delete(socket);
   });
 });
