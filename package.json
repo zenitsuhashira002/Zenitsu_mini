@@ -13,7 +13,7 @@
     "express": "latest",
     "axios": "latest",
     "pino": "^8.15.0",
-    "tesseract": "5.5.2",
+    "tesseract": "latest",
     "ffmpeg-static": "5.2.0",
     "socket.io": "^4.7.2"
   },
