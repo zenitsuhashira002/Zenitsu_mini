@@ -11,7 +11,7 @@
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.23",
     "express": "latest",
-    "yt-search": "^2.10.3"
+    "yt-search": "^2.10.3",
     "axios": "latest",
     "pino": "^8.15.0",
     "tesseract.js": "^6.0.1",
