@@ -269,8 +269,8 @@ _©CybernovA_`;
                     isForwarded: true,
                     forwardedNewsletterMessageInfo: {
                         newsletterJid: '120363425394543602@newsletter',
-                        newsletterName: 'CybernovA',
-                        serverMessageId: 195
+                        newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
+                        serverMessageId: 202
                     }
                 }
             }, { quoted: msg });
@@ -369,8 +369,8 @@ _©CybernovA_`;
                     isForwarded: true,
                     forwardedNewsletterMessageInfo: {
                         newsletterJid: '120363425394543602@newsletter',
-                        newsletterName: 'CybernovA',
-                        serverMessageId: 195
+                        newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
+                        serverMessageId: 202
                     }
                 }
             });

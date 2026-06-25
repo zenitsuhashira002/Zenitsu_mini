@@ -58,7 +58,7 @@ module.exports = {
 ┃
 ┃  • Members : ${participants.length}
 ┃  • Group : ${group.subject}
-┃  • Owner : ${group.owner?.split('@')[0] || 'Unknown'}
+┃  • Owner : @${group.owner?.split('@')[0] || 'Unknown'}
 ┃  • Date : ${new Date().toLocaleDateString()}
 ┃`;
 

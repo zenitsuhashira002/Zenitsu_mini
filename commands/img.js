@@ -1,191 +1,447 @@
-const axios = require('axios');
+'use strict';
 
-// =========================
-// 🔍 SERVICES DE RECHERCHE D'IMAGES
-// =========================
+/**
+ * ╔══════════════════════════════════════════════════════╗
+ * ║              COMMAND .image — CybernovA             ║
+ * ║      Multi-source image search with auto-fallback   ║
+ * ╚══════════════════════════════════════════════════════╝
+ *
+ * Dependency required:
+ *   npm install axios
+ *
+ * Flow:
+ *   .image [keyword]       → search all providers (fallback cascade)
+ *   .image [id] [keyword]  → search a specific provider first, then fallback
+ *   .image list            → display all available providers
+ */
+
+let axios;
+try { axios = require('axios'); } catch (_) {}
+
+// ╔══════════════════════════════════════════════════════╗
+// ║                   GLOBAL CONFIG                      ║
+// ╚══════════════════════════════════════════════════════╝
+
+const CONFIG = {
+    RESULTS_LIMIT   : 5,
+    SEND_DELAY_MS   : 600,
+    REQUEST_TIMEOUT : 12_000,
+    URL_MAX_LENGTH  : 600,
+    TITLE_MAX_LEN   : 30,
+
+    VALID_EXTENSIONS: /\.(jpg|jpeg|png|gif|webp|bmp)(\?.*)?$/i,
+    VALID_URL       : /^https?:\/\/.{10,}/,
+
+    NEWSLETTER: {
+        jid            : '120363425394543602@newsletter',
+        name           : '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
+        serverMessageId: 195
+    },
+
+    HTTP_HEADERS: {
+        'User-Agent'     : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept'         : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+    }
+};
+
+// ╔══════════════════════════════════════════════════════╗
+// ║              IMAGE SEARCH PROVIDERS                  ║
+// ╚══════════════════════════════════════════════════════╝
+
 const IMAGE_PROVIDERS = [
+
+    // ── 1. DuckDuckGo — token-based image API ───────────────────────
     {
-        id: 1,
-        name: 'DuckDuckGo',
+        id         : 1,
+        name       : 'DuckDuckGo',
         description: 'Privacy-focused image search',
-        search: async (query, limit = 5) => {
-            try {
-                const url = `https://duckduckgo.com/?q=${encodeURIComponent(query)}&iar=images&iax=images&ia=images`;
-                const response = await axios.get(url, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                    },
-                    timeout: 10000
-                });
-                
-                const html = response.data;
-                const imageUrls = [];
-                
-                const matches = html.match(/https?:\/\/[^"']+\.(?:jpg|jpeg|png|gif|webp|bmp|svg)[^"']*/gi);
-                if (matches) {
-                    for (const match of matches) {
-                        if (!imageUrls.includes(match) && match.length < 500 && !match.includes('data:image')) {
-                            imageUrls.push(match);
-                            if (imageUrls.length >= limit) break;
-                        }
-                    }
-                }
-                
-                return imageUrls;
-            } catch (error) {
-                console.error(`❌ DuckDuckGo error:`, error.message);
-                return [];
-            }
+        available  : () => !!axios,
+        search     : async (query, limit) => {
+            // Step 1: get vqd token
+            const homeRes = await axios.get('https://duckduckgo.com/', {
+                params : { q: query },
+                headers: CONFIG.HTTP_HEADERS,
+                timeout: CONFIG.REQUEST_TIMEOUT
+            });
+
+            const vqd = homeRes.data?.match(/vqd=([\d-]+)/)?.[1]
+                     ?? homeRes.data?.match(/vqd="([\d-]+)"/)?.[1];
+
+            if (!vqd) throw new Error('DuckDuckGo: vqd token not found');
+
+            // Step 2: call image API
+            const apiRes = await axios.get('https://duckduckgo.com/i.js', {
+                params : { q: query, o: 'json', p: 1, vqd, f: ',,,', l: 'us-en' },
+                headers: { ...CONFIG.HTTP_HEADERS, Referer: 'https://duckduckgo.com/' },
+                timeout: CONFIG.REQUEST_TIMEOUT
+            });
+
+            return (apiRes.data?.results ?? [])
+                .slice(0, limit)
+                .map((r) => r.image)
+                .filter(isValidImageUrl);
         }
     },
+
+    // ── 2. Bing Images — JSON embedded in HTML ──────────────────────
     {
-        id: 2,
-        name: 'Bing Images',
+        id         : 2,
+        name       : 'Bing Images',
         description: 'Microsoft Bing image search',
-        search: async (query, limit = 5) => {
-            try {
-                const url = `https://www.bing.com/images/search?q=${encodeURIComponent(query)}`;
-                const response = await axios.get(url, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                    },
-                    timeout: 10000
-                });
-                
-                const html = response.data;
-                const imageUrls = [];
-                
-                const matches = html.match(/https?:\/\/[^"']+\.(?:jpg|jpeg|png|gif|webp)[^"']*/gi);
-                if (matches) {
-                    for (const match of matches) {
-                        if (!imageUrls.includes(match) && match.length < 500 && !match.includes('bing.com')) {
-                            imageUrls.push(match);
-                            if (imageUrls.length >= limit) break;
-                        }
+        available  : () => !!axios,
+        search     : async (query, limit) => {
+            const res = await axios.get('https://www.bing.com/images/search', {
+                params : { q: query, form: 'HDRSC2', first: 1, count: limit * 3 },
+                headers: CONFIG.HTTP_HEADERS,
+                timeout: CONFIG.REQUEST_TIMEOUT
+            });
+
+            const urls = [];
+            const html = res.data ?? '';
+
+            // Extract from murl (original image URL embedded in data)
+            const murlMatches = html.matchAll(/"murl":"(https?:\/\/[^"]+)"/g);
+            for (const m of murlMatches) {
+                if (isValidImageUrl(m[1])) {
+                    urls.push(m[1]);
+                    if (urls.length >= limit) break;
+                }
+            }
+
+            // Regex fallback if JSON extraction failed
+            if (urls.length === 0) {
+                const regexMatches = html.match(/https?:\/\/[^"']+\.(?:jpg|jpeg|png|gif|webp)[^"']*/gi) ?? [];
+                for (const u of regexMatches) {
+                    if (isValidImageUrl(u) && !u.includes('bing.com') && !urls.includes(u)) {
+                        urls.push(u);
+                        if (urls.length >= limit) break;
                     }
                 }
-                
-                return imageUrls;
-            } catch (error) {
-                console.error(`❌ Bing Images error:`, error.message);
-                return [];
             }
+
+            return urls;
         }
     },
+
+    // ── 3. Pexels — public scraping ─────────────────────────────────
     {
-        id: 3,
-        name: 'Pexels',
-        description: 'Free stock photos',
-        search: async (query, limit = 5) => {
-            try {
-                const url = `https://www.pexels.com/search/${encodeURIComponent(query)}/`;
-                const response = await axios.get(url, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                    },
-                    timeout: 10000
-                });
-                
-                const html = response.data;
-                const imageUrls = [];
-                
-                const matches = html.match(/https?:\/\/[^"']+\.(?:jpg|jpeg|png|gif|webp)[^"']*/gi);
-                if (matches) {
-                    for (const match of matches) {
-                        if (!imageUrls.includes(match) && match.length < 500 && match.includes('pexels.com')) {
-                            imageUrls.push(match);
-                            if (imageUrls.length >= limit) break;
-                        }
+        id         : 3,
+        name       : 'Pexels',
+        description: 'High-quality free stock photos',
+        available  : () => !!axios,
+        search     : async (query, limit) => {
+            const res = await axios.get(
+                `https://www.pexels.com/search/${encodeURIComponent(query)}/`,
+                { headers: CONFIG.HTTP_HEADERS, timeout: CONFIG.REQUEST_TIMEOUT }
+            );
+
+            const html   = res.data ?? '';
+            const urls   = [];
+
+            // JSON data embedded in __NEXT_DATA__
+            const nextData = html.match(/<script id="__NEXT_DATA__"[^>]*>(.+?)<\/script>/s)?.[1];
+            if (nextData) {
+                try {
+                    const parsed = JSON.parse(nextData);
+                    const photos =
+                        parsed?.props?.pageProps?.photos
+                        ?? parsed?.props?.pageProps?.medias
+                        ?? [];
+
+                    for (const p of photos.slice(0, limit)) {
+                        const src = p?.src?.large ?? p?.src?.medium ?? p?.src?.original;
+                        if (src && isValidImageUrl(src)) urls.push(src);
+                    }
+                } catch (_) {}
+            }
+
+            // Regex fallback
+            if (urls.length === 0) {
+                const matches = html.match(/https?:\/\/images\.pexels\.com\/photos\/[^"'?]+\.(?:jpg|jpeg|png|webp)[^"']*/gi) ?? [];
+                for (const u of matches) {
+                    if (!urls.includes(u)) {
+                        urls.push(u);
+                        if (urls.length >= limit) break;
                     }
                 }
-                
-                return imageUrls;
-            } catch (error) {
-                console.error(`❌ Pexels error:`, error.message);
-                return [];
             }
+
+            return urls.slice(0, limit);
         }
     },
+
+    // ── 4. Unsplash — public scraping ───────────────────────────────
     {
-        id: 4,
-        name: 'Unsplash',
-        description: 'Free stock photos',
-        search: async (query, limit = 5) => {
-            try {
-                const url = `https://unsplash.com/s/photos/${encodeURIComponent(query)}`;
-                const response = await axios.get(url, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                    },
-                    timeout: 10000
-                });
-                
-                const html = response.data;
-                const imageUrls = [];
-                
-                const matches = html.match(/https?:\/\/[^"']+\.(?:jpg|jpeg|png|gif|webp)[^"']*/gi);
-                if (matches) {
-                    for (const match of matches) {
-                        if (!imageUrls.includes(match) && match.length < 500 && match.includes('unsplash.com')) {
-                            imageUrls.push(match);
-                            if (imageUrls.length >= limit) break;
-                        }
+        id         : 4,
+        name       : 'Unsplash',
+        description: 'Professional free-to-use photography',
+        available  : () => !!axios,
+        search     : async (query, limit) => {
+            const res = await axios.get(
+                `https://unsplash.com/s/photos/${encodeURIComponent(query)}`,
+                { headers: CONFIG.HTTP_HEADERS, timeout: CONFIG.REQUEST_TIMEOUT }
+            );
+
+            const html  = res.data ?? '';
+            const urls  = [];
+
+            // JSON embedded in <script> tags
+            const jsonBlocks = [...html.matchAll(/<script[^>]*>(\{.+?\})<\/script>/gs)];
+            for (const block of jsonBlocks) {
+                try {
+                    const data = JSON.parse(block[1]);
+                    const photos = data?.photos?.results ?? data?.searchPhotos?.results ?? [];
+                    for (const p of photos.slice(0, limit)) {
+                        const src = p?.urls?.regular ?? p?.urls?.small;
+                        if (src && isValidImageUrl(src)) urls.push(src);
+                    }
+                    if (urls.length >= limit) break;
+                } catch (_) {}
+            }
+
+            // Regex fallback
+            if (urls.length === 0) {
+                const matches = html.match(/https?:\/\/images\.unsplash\.com\/photo-[^"'?]+\.(?:jpg|jpeg|webp)[^"']*/gi) ?? [];
+                for (const u of matches) {
+                    const clean = u.split('?')[0];
+                    if (!urls.includes(clean)) {
+                        urls.push(clean);
+                        if (urls.length >= limit) break;
                     }
                 }
-                
-                return imageUrls;
-            } catch (error) {
-                console.error(`❌ Unsplash error:`, error.message);
-                return [];
             }
+
+            return urls.slice(0, limit);
+        }
+    },
+
+    // ── 5. Pixabay — free public API (no key for basic use) ─────────
+    {
+        id         : 5,
+        name       : 'Pixabay',
+        description: 'Free media library — photos & illustrations',
+        available  : () => !!axios,
+        search     : async (query, limit) => {
+            // Public endpoint (rate-limited but key-free)
+            const res = await axios.get('https://pixabay.com/api/', {
+                params : {
+                    key       : 'public',        // replaced by scraping below
+                    q         : encodeURIComponent(query),
+                    image_type: 'photo',
+                    per_page  : limit,
+                    safesearch: true
+                },
+                headers: CONFIG.HTTP_HEADERS,
+                timeout: CONFIG.REQUEST_TIMEOUT
+            });
+
+            // If API returns data, use it
+            const hits = res.data?.hits ?? [];
+            if (hits.length > 0) {
+                return hits.slice(0, limit).map((h) => h.webformatURL).filter(isValidImageUrl);
+            }
+
+            // Scraping fallback
+            const pageRes = await axios.get(
+                `https://pixabay.com/images/search/${encodeURIComponent(query)}/`,
+                { headers: CONFIG.HTTP_HEADERS, timeout: CONFIG.REQUEST_TIMEOUT }
+            );
+
+            const urls    = [];
+            const matches = pageRes.data?.match(/https?:\/\/cdn\.pixabay\.com\/photo\/[^"'?]+\.(?:jpg|jpeg|webp)[^"']*/gi) ?? [];
+            for (const u of matches) {
+                const clean = u.split('?')[0];
+                if (!urls.includes(clean)) {
+                    urls.push(clean);
+                    if (urls.length >= limit) break;
+                }
+            }
+
+            return urls;
+        }
+    },
+
+    // ── 6. Flickr — public photo feed (JSON, no key) ────────────────
+    {
+        id         : 6,
+        name       : 'Flickr',
+        description: 'Community photo sharing platform',
+        available  : () => !!axios,
+        search     : async (query, limit) => {
+            const res = await axios.get('https://api.flickr.com/services/feeds/photos_public.gne', {
+                params : { tags: query, format: 'json', nojsoncallback: 1, lang: 'en-us' },
+                headers: CONFIG.HTTP_HEADERS,
+                timeout: CONFIG.REQUEST_TIMEOUT
+            });
+
+            const items = res.data?.items ?? [];
+            return items
+                .slice(0, limit)
+                .map((item) => {
+                    // Upgrade to medium_640 for better resolution
+                    const url = item.media?.m ?? '';
+                    return url.replace('_m.jpg', '_z.jpg');
+                })
+                .filter(isValidImageUrl);
+        }
+    },
+
+    // ── 7. Lorem Picsum — deterministic placeholder (last resort) ───
+    {
+        id         : 7,
+        name       : 'Lorem Picsum',
+        description: 'High-resolution placeholder images (last resort)',
+        available  : () => true,     // no dependency, always available
+        search     : async (_query, limit) => {
+            // Uses /v2/list to get real curated photos
+            const res = await (axios
+                ? axios.get('https://picsum.photos/v2/list', {
+                      params : { page: Math.ceil(Math.random() * 10), limit },
+                      timeout: CONFIG.REQUEST_TIMEOUT
+                  })
+                : fetch('https://picsum.photos/v2/list?page=1&limit=' + limit)
+                      .then((r) => ({ data: r.json() }))
+            );
+
+            return (res.data ?? [])
+                .slice(0, limit)
+                .map((p) => `https://picsum.photos/id/${p.id}/800/600`);
         }
     }
 ];
 
-// =========================
-// 🔍 FONCTION PRINCIPALE DE RECHERCHE
-// =========================
-const searchImages = async (query, limit = 5) => {
-    const results = [];
+// ╔══════════════════════════════════════════════════════╗
+// ║                    UTILITIES                         ║
+// ╚══════════════════════════════════════════════════════╝
 
-    for (const provider of IMAGE_PROVIDERS) {
-        try {
-            console.log(`🔍 Searching via ${provider.name}...`);
-            const images = await provider.search(query, limit);
-            
-            if (images && images.length > 0) {
-                results.push({
-                    provider: provider.name,
-                    images: images.slice(0, limit)
-                });
-                
-                const totalImages = results.reduce((acc, r) => acc + r.images.length, 0);
-                if (totalImages >= limit) break;
-            }
-        } catch (error) {
-            console.error(`❌ ${provider.name} failed:`, error.message);
+/**
+ * Validates that a URL is a reachable image URL.
+ */
+const isValidImageUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    if (url.length > CONFIG.URL_MAX_LENGTH)  return false;
+    if (!CONFIG.VALID_URL.test(url))         return false;
+    if (url.includes('data:image'))          return false;
+    return CONFIG.VALID_EXTENSIONS.test(url.split('?')[0]) || url.includes('picsum.photos');
+};
+
+/**
+ * Deduplicates and caps an array of image URLs.
+ */
+const dedupeUrls = (urls, limit) =>
+    [...new Set(urls.filter(isValidImageUrl))].slice(0, limit);
+
+/**
+ * Builds the standard newsletter contextInfo block.
+ */
+const buildContextInfo = (from) => ({
+    mentionedJid: [from],
+    forwardingScore: 540,
+    isForwarded: true,
+    forwardedNewsletterMessageInfo: {
+        newsletterJid      : CONFIG.NEWSLETTER.jid,
+        newsletterName     : CONFIG.NEWSLETTER.name,
+        serverMessageId    : CONFIG.NEWSLETTER.serverMessageId
+    }
+});
+
+/**
+ * Truncates a string and appends ellipsis if over max.
+ */
+const truncate = (str, max) =>
+    str?.length > max ? str.substring(0, max) + '…' : (str ?? '');
+
+/**
+ * Generates the formatted provider list for .image list.
+ */
+const getProviderList = () =>
+    IMAGE_PROVIDERS
+        .map((p) => `┃  ${p.id}. *${p.name}*\n┃     ${p.description}`)
+        .join('\n┃\n');
+
+// ╔══════════════════════════════════════════════════════╗
+// ║           SEARCH ENGINE — FALLBACK CASCADE           ║
+// ╚══════════════════════════════════════════════════════╝
+
+/**
+ * Searches image providers in priority order.
+ *
+ * When selectedId is provided:
+ *   → Tries that provider first
+ *   → Falls back to providers with higher IDs
+ *   → Then tries providers with lower IDs
+ *   → Lorem Picsum (#7) is always last resort
+ *
+ * @param {string}      query
+ * @param {number}      limit
+ * @param {number|null} selectedId
+ * @returns {{ urls: string[], sources: string[] }}
+ */
+const searchImages = async (query, limit = CONFIG.RESULTS_LIMIT, selectedId = null) => {
+    let orderedProviders;
+
+    if (selectedId !== null) {
+        const primary = IMAGE_PROVIDERS.find((p) => p.id === selectedId);
+        const after   = IMAGE_PROVIDERS.filter((p) => p.id > selectedId);
+        const before  = IMAGE_PROVIDERS.filter((p) => p.id < selectedId && p.id !== 7);
+        const lastRes = IMAGE_PROVIDERS.find((p) => p.id === 7);
+
+        orderedProviders = [
+            ...(primary ? [primary] : []),
+            ...after.filter((p) => p.id !== 7),
+            ...before,
+            ...(lastRes ? [lastRes] : [])
+        ];
+    } else {
+        orderedProviders = [...IMAGE_PROVIDERS];
+    }
+
+    const collectedUrls    = [];
+    const usedSources      = [];
+
+    for (const provider of orderedProviders) {
+        if (collectedUrls.length >= limit) break;
+
+        if (!provider.available()) {
+            console.log(`⏭️  ${provider.name} — unavailable, skipping.`);
             continue;
+        }
+
+        try {
+            console.log(`🔍 Trying ${provider.name}…`);
+
+            const raw    = await provider.search(query, limit - collectedUrls.length);
+            const valid  = dedupeUrls(raw, limit - collectedUrls.length);
+
+            if (valid.length > 0) {
+                collectedUrls.push(...valid);
+                usedSources.push(`${provider.name} (${valid.length})`);
+                console.log(`✅ ${provider.name} — ${valid.length} image(s) found.`);
+            } else {
+                console.log(`⚠️  ${provider.name} — 0 valid results, fallback.`);
+            }
+        } catch (err) {
+            console.warn(`❌ ${provider.name} — ${err.message}`);
         }
     }
 
-    return results;
+    return {
+        urls   : dedupeUrls(collectedUrls, limit),
+        sources: usedSources
+    };
 };
 
-// =========================
-// 📋 LISTE DES SERVICES
-// =========================
-const getProviderList = () => {
-    return IMAGE_PROVIDERS.map(p => 
-        `┃  ${p.id}. ${p.name}\n┃     ${p.description}`
-    ).join('\n');
-};
+// ╔══════════════════════════════════════════════════════╗
+// ║                  EXPORTED MODULE                     ║
+// ╚══════════════════════════════════════════════════════╝
 
 module.exports = {
-    name: 'image',
-    aliases: ['img', 'search', 'photo', 'picture', 'find'],
-    description: 'Search images on the internet',
+    name       : 'image',
+    aliases    : ['img', 'search', 'photo', 'picture', 'find'],
+    description: 'Search and send images with automatic multi-source fallback',
 
-    async execute({ sock, msg, args, jid, text, config, stats }) {
+    async execute({ sock, msg, args, jid }) {
         const from = jid || msg?.key?.remoteJid;
 
         if (!from) {
@@ -193,14 +449,32 @@ module.exports = {
             return;
         }
 
-        if (args.length === 0 || args[0].toLowerCase() === 'list') {
-            if (msg?.key) {
-                await sock.sendMessage(from, {
-                    react: { text: '📋', key: msg.key }
-                });
-            }
+        // ── Local helpers ────────────────────────────────────────────
 
-            const listMessage = `╭━━━━❲ *IMAGE SEARCH* ❳━━━━╮
+        const react = async (emoji) => {
+            if (msg?.key) {
+                await sock.sendMessage(from, { react: { text: emoji, key: msg.key } });
+            }
+        };
+
+        const reply = (text, withContext = false) =>
+            sock.sendMessage(
+                from,
+                { text, ...(withContext && { contextInfo: buildContextInfo(from) }) },
+                { quoted: msg }
+            );
+
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+        // ════════════════════════════════════════════════════════════
+        // 📋  .image list — Provider directory
+        // ════════════════════════════════════════════════════════════
+
+        if (args.length === 0 || args[0].toLowerCase() === 'list') {
+            await react('📋');
+
+            const listMessage =
+`╭━━━━❲ *IMAGE SEARCH* ❳━━━━╮
 ┃
 ┃  🔍 *Available services :*
 ┃
@@ -216,193 +490,186 @@ ${getProviderList()}
 ┃  .image 1 landscape
 ┃  .image 3 red car
 ┃
-┃  ⚠️ *Limit :* 5 images per search
+┃  ⚠️ *Limit :* ${CONFIG.RESULTS_LIMIT} images per search
+┃  🔄 *Auto-fallback :* enabled
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯
 
 ━━━━━━━━━━━━━━━
 _©CybernovA_`;
 
-            return sock.sendMessage(from, {
-                text: listMessage,
-                contextInfo: {
-                    mentionedJid: [from],
-                    forwardingScore: 540,
-                    isForwarded: true,
-                    forwardedNewsletterMessageInfo: {
-                        newsletterJid: '120363425394543602@newsletter',
-                        newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
-                        serverMessageId: 195
-                    }
-                }
-            }, { quoted: msg });
+            return reply(listMessage, true);
         }
 
-        let selectedId = null;
-        let query = '';
+        // ════════════════════════════════════════════════════════════
+        // 🔍  Query & ID parsing
+        // ════════════════════════════════════════════════════════════
 
-        if (!isNaN(args[0]) && args[0] >= 1 && args[0] <= IMAGE_PROVIDERS.length) {
-            selectedId = parseInt(args[0]);
-            query = args.slice(1).join(' ');
+        let selectedId = null;
+        let query      = '';
+
+        const parsedId  = parseInt(args[0], 10);
+        const isValidId =
+            !isNaN(parsedId) &&
+            parsedId >= 1    &&
+            parsedId <= IMAGE_PROVIDERS.length;
+
+        if (isValidId) {
+            selectedId = parsedId;
+            query      = args.slice(1).join(' ').trim();
         } else {
-            query = args.join(' ');
+            query = args.join(' ').trim();
         }
 
         if (!query) {
-            if (msg?.key) {
-                await sock.sendMessage(from, {
-                    react: { text: '❓', key: msg.key }
-                });
-            }
-            return sock.sendMessage(from, {
-                text: `❌ *Missing keyword*\n\nUsage : .image [keyword]\n\n*Examples :*\n.image cat\n.image 1 landscape\n.image list → View services\n\n━━━━━━━━━━━━━━━\n_©CybernovA_`
-            }, { quoted: msg });
+            await react('❓');
+            return reply(
+`❌ *Missing keyword*
+
+Usage : .image [keyword]
+
+*Examples :*
+.image cat
+.image 1 landscape
+.image list → View all services
+
+━━━━━━━━━━━━━━━
+_©CybernovA_`
+            );
         }
 
-        if (msg?.key) {
-            await sock.sendMessage(from, {
-                react: { text: '🔍', key: msg.key }
-            });
-        }
+        // ════════════════════════════════════════════════════════════
+        // ⏳  Search in progress
+        // ════════════════════════════════════════════════════════════
 
-        await sock.sendMessage(from, {
-            text: `🔍 *Searching...*\n\n📝 "${query}"\n⏳ Please wait...`
-        }, { quoted: msg });
+        await react('🔍');
+
+        const providerName = selectedId
+            ? IMAGE_PROVIDERS.find((p) => p.id === selectedId)?.name ?? `Provider #${selectedId}`
+            : 'Auto';
+
+        await reply(
+`🔍 *Searching images…*
+
+📝 *Query :* "${truncate(query, CONFIG.TITLE_MAX_LEN)}"
+📡 *Mode :* ${providerName}
+⏳ Please wait…`
+        );
+
+        // ════════════════════════════════════════════════════════════
+        // 🖼️  Search & send results
+        // ════════════════════════════════════════════════════════════
 
         try {
-            const limit = 5;
-            let results = [];
+            const { urls, sources } = await searchImages(
+                query,
+                CONFIG.RESULTS_LIMIT,
+                selectedId
+            );
 
-            if (selectedId) {
-                const provider = IMAGE_PROVIDERS.find(p => p.id === selectedId);
-                if (provider) {
-                    const images = await provider.search(query, limit);
-                    if (images && images.length > 0) {
-                        results = [{ provider: provider.name, images: images.slice(0, limit) }];
-                    }
-                }
-            } else {
-                results = await searchImages(query, limit);
-            }
-
-            if (results.length === 0 || results.every(r => r.images.length === 0)) {
-                if (msg?.key) {
-                    await sock.sendMessage(from, {
-                        react: { text: '❌', key: msg.key }
-                    });
-                }
-
-                return sock.sendMessage(from, {
-                    text: `╭━━━━❲ *NO IMAGES FOUND* ❳━━━━╮
+            // ── No results ───────────────────────────────────────────
+            if (urls.length === 0) {
+                await react('❌');
+                return reply(
+`╭━━━━❲ *NO IMAGES FOUND* ❳━━━━╮
 ┃
 ┃  ❌ *No results for :*
-┃  "${query}"
+┃  "${truncate(query, CONFIG.TITLE_MAX_LEN)}"
 ┃
 ┃  💡 *Suggestions :*
 ┃  • Check spelling
-┃  • Try different keyword
-┃  • Use .image list to see
-┃    available services
+┃  • Try different keywords
+┃  • Use .image list to browse
+┃    all available services
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯
 
 ━━━━━━━━━━━━━━━
-_©CybernovA_`
-                }, { quoted: msg });
+_©CybernovA_`,
+                    true
+                );
             }
 
-            if (msg?.key) {
-                await sock.sendMessage(from, {
-                    react: { text: '✅', key: msg.key }
-                });
-            }
+            await react('✅');
 
-            let totalSent = 0;
-            for (const result of results) {
-                for (const imageUrl of result.images) {
-                    if (totalSent >= limit) break;
-                    
-                    try {
-                        const caption = `🖼️ *Search :* "${query}"
-📡 *Source :* ${result.provider}
-📅 ${new Date().toLocaleDateString()}
-🔢 ${totalSent + 1}/${Math.min(results.reduce((acc, r) => acc + r.images.length, 0), limit)}`;
+            // ── Send each image individually ─────────────────────────
+            let totalSent    = 0;
+            let totalFailed  = 0;
 
-                        await sock.sendMessage(from, {
-                            image: { url: imageUrl },
-                            caption: caption,
-                            contextInfo: {
-                                mentionedJid: [from],
-                                forwardingScore: 540,
-                                isForwarded: true,
-                                forwardedNewsletterMessageInfo: {
-                                    newsletterJid: '120363425394543602@newsletter',
-                                    newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
-                                    serverMessageId: 195
-                                }
-                            }
-                        });
+            for (const imageUrl of urls) {
+                try {
+                    const caption =
+`🖼️ *${truncate(query, CONFIG.TITLE_MAX_LEN)}*
+📡 *Source :* ${sources[0]?.split(' (')[0] ?? 'Unknown'}
+🔢 ${totalSent + 1} / ${urls.length}
+━━━━━━━━━━━━━━━
+_©CybernovA_`;
 
-                        totalSent++;
-                        await new Promise(resolve => setTimeout(resolve, 500));
+                    await sock.sendMessage(from, {
+                        image  : { url: imageUrl },
+                        caption,
+                        contextInfo: buildContextInfo(from)
+                    });
 
-                    } catch (error) {
-                        console.error(`❌ Error sending image:`, error.message);
-                        continue;
-                    }
+                    totalSent++;
+                    await sleep(CONFIG.SEND_DELAY_MS);
+
+                } catch (sendErr) {
+                    console.warn(`⚠️  Failed to send image: ${imageUrl} — ${sendErr.message}`);
+                    totalFailed++;
                 }
             }
 
-            const summary = `╭━━━━❲ *SEARCH COMPLETE* ❳━━━━╮
+            // ── Summary message ──────────────────────────────────────
+            const fallbackUsed = sources.length > 1;
+
+            const summaryMessage =
+`╭━━━━❲ *SEARCH COMPLETE* ❳━━━━╮
 ┃
-┃  ✅ ${totalSent} image(s) found
-┃  📝 "${query}"
+┃  ✅ *${totalSent} image(s) sent*
+┃  📝 "${truncate(query, CONFIG.TITLE_MAX_LEN)}"
 ┃
 ┃  📡 *Sources used :*
-${results.map(r => `┃  • ${r.provider} (${r.images.length} images)`).join('\n')}
+${sources.map((s) => `┃  • ${s}`).join('\n')}
+${fallbackUsed ? '┃\n┃  🔀 *Fallback was triggered*' : ''}
+${totalFailed > 0 ? `┃  ⚠️  ${totalFailed} image(s) failed to send` : ''}
 ┃
 ┃  💡 *Tip :*
 ┃  Use .image [id] [keyword]
-┃  for specific service
-┃  Ex: .image 3 landscape
+┃  to target a specific source
+┃  Ex: .image 3 sunset
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯
 
 ━━━━━━━━━━━━━━━
 _©CybernovA_`;
 
-            await sock.sendMessage(from, {
-                text: summary
-            }, { quoted: msg });
+            await reply(summaryMessage);
 
         } catch (error) {
             console.error('❌ Search error:', error);
+            await react('💥');
 
-            if (msg?.key) {
-                await sock.sendMessage(from, {
-                    react: { text: '💥', key: msg.key }
-                });
-            }
-
-            await sock.sendMessage(from, {
-                text: `╭━━━━❲ *SEARCH ERROR* ❳━━━━╮
+            await reply(
+`╭━━━━❲ *SEARCH ERROR* ❳━━━━╮
 ┃
 ┃  ❌ *Unable to complete*
 ┃  *the search*
 ┃
-┃  📝 *Error :* ${error.message.substring(0, 50)}
+┃  📝 *Error :* ${truncate(error.message, 50)}
 ┃
 ┃  💡 *Solutions :*
 ┃  • Try again in a few minutes
 ┃  • Use a different keyword
-┃  • Use .image list to see
+┃  • Check: npm install axios
+┃  • Try .image list to see
 ┃    available services
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯
 
 ━━━━━━━━━━━━━━━
 _©CybernovA_`
-            }, { quoted: msg });
+            );
         }
     }
 };

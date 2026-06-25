@@ -153,7 +153,7 @@ _©CybernovA_`;
             }
 
             // Convertir vidéo en sticker WebP animé
-            const command = `ffmpeg -i "${videoPath}" -vf "fps=10,scale=512:512:force_original_aspect_ratio=1,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000" -quality 60 -loop 0 -vcodec libwebp -pix_fmt yuv420p -preset default -an -vsync 0 "${stickerPath}"`;
+            const command = `ffmpeg -i "${videoPath}" -vf "fps=50,scale=512:512:force_original_aspect_ratio=1,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000" -quality 80 -loop 0 -vcodec libwebp -pix_fmt yuv420p -preset default -an -vsync 0 "${stickerPath}"`;
             
             await execPromise(command);
 
