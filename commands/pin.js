@@ -14,7 +14,8 @@
 //   1. Scrape Pinterest (recherche publique, pas d'auth)
 //   2. Fallback Bing Images si Pinterest échoue
 // Le bot envoie les images trouvées une par une (max configurable).
-// L'user peut envoyer ".img <query> --n=3" pour demander N résultats. 
+// L'user peut envoyer ".img <query> --n=3" pour demander N résultats.
+
 const TIMEOUT_MS  = 20000;
 const DEFAULT_MAX = 1; // 1 image par défaut pour éviter le spam
 const HARD_MAX    = 5; // max absolu
@@ -24,14 +25,16 @@ const USER_AGENT =
   'AppleWebKit/537.36 (KHTML, like Gecko) ' +
   'Chrome/124.0.0.0 Mobile Safari/537.36';
 
-// ─── Helpers ───────────────────────────────────                     
+// ─── Helpers ───────────────────────────────────
+
 async function react(sock, msg, emoji) {
   try {
     await sock.sendMessage(msg.key.remoteJid, {
       react: { text: emoji, key: msg.key },
     });
   } catch (_) {}
-}                                                                      
+}
+
 function fetchWithTimeout(url, options = {}, ms = TIMEOUT_MS) {
   const controller = new AbortController();
   const timer      = setTimeout(() => controller.abort(), ms);
@@ -47,7 +50,8 @@ async function searchPinterest(query, maxResults) {
   const url = 'https://www.pinterest.com/search/pins/?q=' +
     encodeURIComponent(query) + '&rs=typed';
 
-  const res = await fetchWithTimeout(url, {                                headers: {
+  const res = await fetchWithTimeout(url, {
+    headers: {
       'User-Agent': USER_AGENT,
       'Accept': 'text/html,application/xhtml+xml',
       'Accept-Language': 'en-US,en;q=0.9',
@@ -65,10 +69,13 @@ async function searchPinterest(query, maxResults) {
   // Pattern : "orig":{"url":"https://i.pinimg.com/..."}
   const origPattern = /"orig"\s*:\s*\{[^}]*"url"\s*:\s*"(https:\/\/i\.pinimg\.com\/[^"]+)"/g;
   let match;
-  while ((match = origPattern.exec(html)) !== null && imageUrls.length < maxResults) {                                                            const url = match[1].replace(/\\u002F/g, '/');
-    if (!imageUrls.includes(url)) imageUrls.push(url);                   }
+  while ((match = origPattern.exec(html)) !== null && imageUrls.length < maxResults) {
+    const url = match[1].replace(/\\u002F/g, '/');
+    if (!imageUrls.includes(url)) imageUrls.push(url);
+  }
 
-  // Méthode 2 : fallback sur les thumbnails 736x si pas assez           if (imageUrls.length < maxResults) {
+  // Méthode 2 : fallback sur les thumbnails 736x si pas assez
+  if (imageUrls.length < maxResults) {
     const thumbPattern = /"736x"\s*:\s*\{[^}]*"url"\s*:\s*"(https:\/\/i\.pinimg\.com\/[^"]+)"/g;
     while ((match = thumbPattern.exec(html)) !== null && imageUrls.length < maxResults) {
       const url = match[1].replace(/\\u002F/g, '/');
@@ -131,10 +138,12 @@ async function downloadImage(url) {
 
 module.exports = {
   name: 'img',
-  aliases: ['img', 'image', 'search'],                                   description: 'Search and send images from the web (Pinterest → Bing)',
+  aliases: ['img', 'image', 'search'],
+  description: 'Search and send images from the web (Pinterest → Bing)',
   usage: '.img <query> [--n=2]',
   adminOnly: false,
-  groupOnly: false,                                                    
+  groupOnly: false,
+
   async execute({ sock, msg, args, jid }) {
     // Parser les args : détecter --n=X
     let maxResults = DEFAULT_MAX;
@@ -145,7 +154,8 @@ module.exports = {
       if (nMatch) {
         maxResults = Math.min(parseInt(nMatch[1], 10), HARD_MAX);
       } else {
-        filteredArgs.push(arg);                                              }
+        filteredArgs.push(arg);
+      }
     }
 
     const query = filteredArgs.join(' ').trim();
@@ -175,11 +185,13 @@ module.exports = {
       usedProvider = 'Pinterest';
     } catch (e) {
       errors.push(`Pinterest: ${e.message}`);
-      try {                                                                    imageUrls    = await searchBing(query, maxResults);
+      try {
+        imageUrls    = await searchBing(query, maxResults);
         usedProvider = 'Bing Images';
       } catch (e2) {
         errors.push(`Bing: ${e2.message}`);
-      }                                                                    }
+      }
+    }
 
     if (imageUrls.length === 0) {
       await react(sock, msg, '💤');
@@ -230,7 +242,8 @@ module.exports = {
 
     await react(sock, msg, '⚡');
 
-    // Signaler les échecs partiels si besoin                              if (sendErrors.length > 0 && sent < imageUrls.length) {
+    // Signaler les échecs partiels si besoin
+    if (sendErrors.length > 0 && sent < imageUrls.length) {
       await sock.sendMessage(jid, {
         text: `⚠️ ${sent}/${imageUrls.length} image(s) sent. ${sendErrors.length} failed.`,
       }, { quoted: msg });
