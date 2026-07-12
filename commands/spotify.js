@@ -210,7 +210,7 @@ async function downloadSpotify(sock, msg, jid, trackUrl, title, artist) {
         const encodedUrl = encodeURIComponent(trackUrl);
 
         const { data } = await axios.get(
-            `https://api.giftedtech.co.ke/api/download/spotifydlv2?apikey=gifted&url=${encodedUrl}`,
+            `https://api.giftedtech.co.ke/api/download/spotifydlv4?apikey=gifted&url=${encodedUrl}`,
             { timeout: 90000 }
         );
 
@@ -270,7 +270,7 @@ async function downloadSpotify(sock, msg, jid, trackUrl, title, artist) {
             text:
                 '❌ *Download Failed*\n\n' +
                 `${err.message}\n\n` +
-                '⚡ Try another result or check the URL.',
+                '⚡ Try again or another search',
             contextInfo: {
                 forwardingScore: 350,
                 isForwarded: true,
