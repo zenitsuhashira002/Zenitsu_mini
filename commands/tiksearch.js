@@ -79,7 +79,7 @@ const SEARCH_APIS = [
 // ═══════════════════════════════════════
 
 module.exports = {
-    name: 'tiksearch2',
+    name: 'tiksearch',
     aliases: ['tiktoksearch', 'tts', 'tsearch'],
     category: 'search',
 
