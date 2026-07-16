@@ -2,10 +2,6 @@
 
 const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
 
-// ═══════════════════════════════════════
-// STYLE
-// ═══════════════════════════════════════
-
 const STYLE = {
     forwardingScore: 350,
     isForwarded: true,
@@ -16,9 +12,14 @@ const STYLE = {
     },
 };
 
-// ═══════════════════════════════════════
-// COMMAND
-// ═══════════════════════════════════════
+function getBotJid(sock) {
+    if (sock.user?.id) return sock.user.id.split(':')[0]; // "584168698003@s.whatsapp.net"
+    if (sock.user?.lid) {
+        const num = sock.user.lid.split('@')[0];
+        return `${num}@s.whatsapp.net`;
+    }
+    return '';
+}
 
 module.exports = {
     name: 'vv2',
@@ -26,15 +27,12 @@ module.exports = {
     category: 'tools',
 
     async execute({ sock, msg, args, jid }) {
-        const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+        const contextInfo = msg.message?.extendedTextMessage?.contextInfo;
+        const quoted = contextInfo?.quotedMessage;
 
         if (!quoted) {
             return sock.sendMessage(jid, {
-                text:
-                    '👁️ *View-Once Saver v2*\n\n' +
-                    '⚡ *Usage:*\n' +
-                    '.vv2 (reply to a view-once image/video)\n\n' +
-                    '💡 Saves view-once media and sends it to the bot\'s own chat.',
+                text: '👁️ *View-Once Saver v2*\n\n⚡ .vv2 (reply to view-once)\n💡 Saves to bot chat.',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
@@ -50,73 +48,45 @@ module.exports = {
             mediaMessage = quoted.videoMessage;
         } else {
             return sock.sendMessage(jid, {
-                text: '❌ Please reply to a *view-once* image or video.',
+                text: '❌ Reply to a *view-once* image or video.',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
 
-        // Reaction
-        try { await sock.sendMessage(jid, { react: { text: '👁️', key: msg.key } }); } catch (_) {}
-
         try {
-            // Download the view-once media
+            // Même téléchargement que la commande vv (downloadContentFromMessage)
             const stream = await downloadContentFromMessage(mediaMessage, mediaType);
             let buffer = Buffer.from([]);
             for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
 
             if (!buffer || buffer.length < 100) throw new Error('Download failed');
 
-            // Récupérer le JID du bot lui-même (celui qu'il utilise pour sa propre conversation)
-            const botJid = sock.user?.id || sock.user?.jid || '';
-
+            const botJid = getBotJid(sock);
             if (!botJid) throw new Error('Bot JID not found');
 
             const caption = mediaMessage.caption || '';
             const senderJid = msg.key.participant || msg.key.remoteJid;
             const senderNumber = senderJid.split('@')[0].split(':')[0];
             const sizeMB = (buffer.length / (1024 * 1024)).toFixed(2);
-
-            // Send to bot's own chat
+            const bot = sock.user.id || senderJid;
             if (mediaType === 'image') {
-                await sock.sendMessage(botJid, {
+                await sock.sendMessage(senderJid, {
                     image: buffer,
-                    caption:
-                        '👁️ *View-Once Saved*\n\n' +
-                        `👤 *From:* @${senderNumber}\n` +
-                        (caption ? `📝 *Caption:* ${caption}\n` : '') +
-                        `📦 *Size:* ${sizeMB} MB\n\n` +
-                        '⚡ _Zenitsu_',
-                    contextInfo: {
-                        mentionedJid: [senderJid],
-                        ...STYLE,
-                    },
+                    caption: `👁️ *View-Once*\n👤 @${senderNumber}\n💬 ${jid.split('@')[0]}\n📦 ${sizeMB} MB\n⚡ _Zenitsu_`,
+                    contextInfo: { mentionedJid: [senderJid], ...STYLE },
                 });
             } else {
-                await sock.sendMessage(botJid, {
+                await sock.sendMessage(senderJid, {
                     video: buffer,
-                    caption:
-                        '👁️ *View-Once Saved*\n\n' +
-                        `👤 *From:* @${senderNumber}\n` +
-                        (caption ? `📝 *Caption:* ${caption}\n` : '') +
-                        `📦 *Size:* ${sizeMB} MB\n\n` +
-                        '⚡ _Zenitsu_',
-                    contextInfo: {
-                        mentionedJid: [senderJid],
-                        ...STYLE,
-                    },
+                    caption: `👁️ *View-Once*\n👤 @${senderNumber}\n💬 ${jid.split('@')[0]}\n📦 ${sizeMB} MB\n⚡ _Zenitsu_`,
+                    contextInfo: { mentionedJid: [senderJid], ...STYLE },
                 });
             }
 
-            // Confirm to the user
-            try { await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
-
         } catch (err) {
-            console.error('❌ vv2 error:', err.message);
+            console.error('❌ vv2:', err.message);
             try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
-            await sock.sendMessage(jid, {
-                text: `❌ Failed: ${err.message}`,
-                contextInfo: STYLE,
-            }, { quoted: msg });
+            await sock.sendMessage(jid, { text: `❌ ${err.message}`, contextInfo: STYLE }, { quoted: msg });
         }
     },
 };

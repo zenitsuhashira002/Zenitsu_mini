@@ -26,8 +26,8 @@ function getNumber(jid) {
 const BOT_INFO = {
     name: '𝙯𝙚𝙣𝙞𝙩𝙨𝙪 ᗰᎥᑎᎥ',
     owner: '50935729494',
-    menuImage: 'https://iili.io/CcjxqtR.jpg',
-    menuAudio: 'https://n.uguu.se/jYWlvfXC.mpeg', // Updated audio source link
+    menuImage: 'https://iili.io/CMfZxsI.jpg',
+    menuAudio: 'https://files.catbox.moe/9ypbfk.mpeg', // Updated audio source link
     channelName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
     channelJid: '120363425394543602@newsletter',
     description: 'ᴄʏʙᴇʀɴᴏᴠᴀ 𝐗 𝙈𝙀𝙏Α',
@@ -173,6 +173,7 @@ module.exports = {
                 }, { quoted: msg });
             } catch (audioErr) {
                 console.log('⚠️ Menu audio unavailable, bypassing audio delivery.');
+                console.log(audioErr);
             }
 
 

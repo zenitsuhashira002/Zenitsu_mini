@@ -1,14 +1,65 @@
-
+// ./commands/pinterest.js
 
 const axios = require('axios');
 
+// ═══════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════
+
+const STYLE = {
+    forwardingScore: 350,
+    isForwarded: true,
+    forwardedNewsletterMessageInfo: {
+        newsletterJid: '120363425394543602@newsletter',
+        newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
+        serverMessageId: 202,
+    },
+};
+
+// ═══════════════════════════════════════
+// SEARCH APIS
+// ═══════════════════════════════════════
+
+const SEARCH_APIS = [
+    {
+        name: 'NexRay',
+        url: (query) => `https://api.nexray.eu.cc/search/pinterest?q=${encodeURIComponent(query)}`,
+        timeout: 15000,
+        extract: (data) => {
+            let results = [];
+            if (data?.result && Array.isArray(data.result)) results = data.result;
+            return results.map(item => ({
+                image: item.images_url || item.image || '',
+                title: item.grid_title || item.title || '',
+            })).filter(item => item.image && item.image.startsWith('http'));
+        },
+    },
+    {
+        name: 'DavidCyril',
+        url: (query) => `https://apis.davidcyriltech.my.id/search/pinterest?text=${encodeURIComponent(query)}`,
+        timeout: 15000,
+        extract: (data) => {
+            let results = [];
+            if (data?.result && Array.isArray(data.result)) results = data.result;
+            else if (data?.data && Array.isArray(data.data)) results = data.data;
+            return results.map(item => ({
+                image: item.image || item.url || item.images_url || '',
+                title: item.title || item.grid_title || '',
+            })).filter(item => item.image && item.image.startsWith('http'));
+        },
+    },
+];
+
+// ═══════════════════════════════════════
+// COMMAND
+// ═══════════════════════════════════════
+
 module.exports = {
     name: 'pinterest',
-    aliases: ['pinterest', 'pindl', 'pinsearch'],
+    aliases: ['pin', 'pindl', 'pinsearch'],
     category: 'search',
 
     async execute({ sock, msg, args, jid }) {
-        // ── Parse arguments: .pin [count] <query> ──
         let count = 5;
         let queryStart = 0;
 
@@ -20,209 +71,107 @@ module.exports = {
 
         const query = args.slice(queryStart).join(' ');
 
-        // ── No query ──
         if (!query || query.trim().length < 1) {
             return sock.sendMessage(jid, {
-                text:
-                    '📌 *Pinterest Search & Download*\n\n' +
-                    '⚡ *Usage:*\n' +
-                    '.pinterest [count] <query>\n\n' +
-                    '✨ *Examples:*\n' +
-                    '.pinterest Zenitsu pfp\n' +
-                    '.pinterest 7 Cute cats\n' +
-                    '.pinterest 3 Anime wallpaper\n' +
-                    '.pinterest 10 Nature aesthetic\n\n' +
-                    '💡 Default: 5 images\n' +
-                    '🔢 Max: 15 images',
-                contextInfo: {
-                    forwardingScore: 350,
-                    isForwarded: true,
-                    forwardedNewsletterMessageInfo: {
-                        newsletterJid: '120363425394543602@newsletter',
-                        newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
-                        serverMessageId: 202,
-                    },
-                },
+                text: '📌 *Pinterest Search*\n\n⚡ .pinterest [count] <query>\n💡 Default: 5 | Max: 20',
+                contextInfo: STYLE,
             }, { quoted: msg });
         }
 
-        // ── Reaction ──
         try { await sock.sendMessage(jid, { react: { text: '🔍', key: msg.key } }); } catch (_) {}
 
         try {
-            // ── Step 1: Search Pinterest ──
-            const searchRes = await axios.get(
-                `https://sylphyy.xyz/search/pinterest?q=${encodeURIComponent(query)}&api_key=sylphy-qZJV4pp`,
-                { timeout: 30000 }
-            );
+            // RECHERCHE
+            let allImages = [];
+            let usedSource = '';
 
-            console.log('📌 Search Response:', JSON.stringify(searchRes.data).substring(0, 500));
+            for (const api of SEARCH_APIS) {
+                try {
+                    console.log(`🔍 Pinterest: ${api.name}...`);
+                    const { data } = await axios.get(api.url(query), { timeout: api.timeout });
+                    const results = api.extract(data);
 
-            // ── Extract images ──
-            let images = [];
-
-            if (searchRes.data?.result && Array.isArray(searchRes.data.result)) {
-                images = searchRes.data.result
-                    .map(item => ({
-                        image: item.image || item.url || item.thumbnail || '',
-                        title: item.title || '',
-                        pinUrl: item.url || '',
-                    }))
-                    .filter(item => item.image && item.image.startsWith('http'));
+                    if (results.length > 0) {
+                        allImages = results;
+                        usedSource = api.name;
+                        console.log(`✅ ${api.name}: ${results.length} images`);
+                        break;
+                    }
+                } catch (err) {
+                    console.log(`⚠️ ${api.name}: ${err.message}`);
+                }
             }
 
-            if (images.length === 0) {
-                throw new Error('No images found');
+            if (allImages.length === 0) {
+                try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+                return sock.sendMessage(jid, { text: '❌ No images found.', contextInfo: STYLE }, { quoted: msg });
             }
 
-            // ── Shuffle and limit ──
-            const shuffled = images.sort(() => Math.random() - 0.5);
-            const selected = shuffled.slice(0, Math.min(count, shuffled.length));
+            // Dédupliquer + mélanger
+            const seen = new Set();
+            const unique = allImages.filter(img => img.image && !seen.has(img.image) && seen.add(img.image));
+            const shuffled = unique.sort(() => Math.random() - 0.5);
+            const selected = shuffled.slice(0, count);
 
-            console.log(`📌 Sending ${selected.length} images...`);
+            await sock.sendMessage(jid, {
+                text: `📌 *Pinterest*\n\n🔍 ${query}\n🔧 ${usedSource}\n📊 ${selected.length} images\n⏳ Downloading...`,
+                contextInfo: STYLE,
+            }, { quoted: msg });
 
-            // ── Reaction: downloading ──
-            try { await sock.sendMessage(jid, { react: { text: '⬇️', key: msg.key } }); } catch (_) {}
+            // ═══════════════════
+            // TÉLÉCHARGER EN BUFFER + ENVOYER (un par un)
+            // ═══════════════════
 
-            // ── Step 2: Send each image directly ──
             let sent = 0;
-            let failed = 0;
 
             for (let i = 0; i < selected.length; i++) {
                 const item = selected[i];
 
+                // Petit délai
+                await new Promise(r => setTimeout(r, 1500));
+
                 try {
-                    // Send image directly from the search result URL
-                    try {
-                        await sock.sendMessage(jid, {
-                            image: { url: item.image },
-                            caption:
-                                `📌 *Pinterest — ${i + 1}/${selected.length}*\n` +
-                                `🔍 *Query:* ${query}\n` +
-                                (item.title ? `📝 *Title:* ${item.title}\n` : '') +
-                                (item.pinUrl ? `🔗 ${item.pinUrl}\n` : '') +
-                                '\n⚡ _Downloaded by Zenitsu_',
-                            contextInfo: {
-                                forwardingScore: 350,
-                                isForwarded: true,
-                                forwardedNewsletterMessageInfo: {
-                                    newsletterJid: '120363425394543602@newsletter',
-                                    newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
-                                    serverMessageId: 202,
-                                },
-                            },
-                        }, { quoted: i === 0 ? msg : undefined });
-                        sent++;
-                    } catch (sendErr) {
-                        // Fallback: try to download and send as buffer
-                        console.log(`⚠️ Direct send failed for image ${i + 1}, trying download...`);
+                    console.log(`⬇️ [${i + 1}/${selected.length}] ${item.image.slice(0, 60)}...`);
 
-                        try {
-                            const imgRes = await axios.get(item.image, {
-                                responseType: 'arraybuffer',
-                                timeout: 30000,
-                            });
-                            const buffer = Buffer.from(imgRes.data);
+                    // ⭐ Télécharger directement en buffer (obligatoire)
+                    const response = await axios.get(item.image, {
+                        responseType: 'arraybuffer',
+                        timeout: 30000,
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                            'Referer': 'https://www.pinterest.com/',
+                        },
+                    });
 
-                            await sock.sendMessage(jid, {
-                                image: buffer,
-                                caption:
-                                    `📌 *Pinterest — ${i + 1}/${selected.length}*\n` +
-                                    `🔍 *Query:* ${query}\n` +
-                                    (item.title ? `📝 *Title:* ${item.title}\n` : '') +
-                                    '\n⚡ _Downloaded by Zenitsu_',
-                                contextInfo: {
-                                    forwardingScore: 350,
-                                    isForwarded: true,
-                                    forwardedNewsletterMessageInfo: {
-                                        newsletterJid: '120363425394543602@newsletter',
-                                        newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
-                                        serverMessageId: 202,
-                                    },
-                                },
-                            }, { quoted: i === 0 ? msg : undefined });
-                            sent++;
-                        } catch (dlErr) {
-                            // Last fallback: send link
-                            await sock.sendMessage(jid, {
-                                text:
-                                    `📌 *Pinterest Link — ${i + 1}*\n` +
-                                    (item.title ? `📝 *Title:* ${item.title}\n` : '') +
-                                    `🔗 ${item.image}\n\n` +
-                                    '⚠️ Sent as link.',
-                                contextInfo: {
-                                    forwardingScore: 350,
-                                    isForwarded: true,
-                                    forwardedNewsletterMessageInfo: {
-                                        newsletterJid: '120363425394543602@newsletter',
-                                        newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
-                                        serverMessageId: 202,
-                                    },
-                                },
-                            });
-                            sent++;
-                        }
+                    const buffer = Buffer.from(response.data);
+
+                    if (!buffer || buffer.length < 500) {
+                        console.log(`⚠️ [${i + 1}] Buffer too small: ${buffer?.length || 0}`);
+                        continue;
                     }
 
+                    // Envoyer l'image
+                    await sock.sendMessage(jid, {
+                        image: buffer,
+                        caption: `📌 *${i + 1}/${selected.length}*\n🔍 ${query}\n${item.title ? `📝 ${item.title.slice(0, 80)}\n` : ''}⚡ _Zenitsu_`,
+                        contextInfo: STYLE,
+                    }, { quoted: i === 0 ? msg : undefined });
+
+                    sent++;
+                    console.log(`✅ [${i + 1}/${selected.length}] ${(buffer.length / 1024).toFixed(1)} KB`);
+
                 } catch (err) {
-                    console.log(`⚠️ Image ${i + 1} completely failed:`, err.message);
-                    failed++;
-                }
-
-                // Delay between images
-                if (i < selected.length - 1) {
-                    await new Promise(r => setTimeout(r, 1200));
+                    console.log(`❌ [${i + 1}] Failed: ${err.message}`);
                 }
             }
 
-            // ── Summary ──
-            if (sent > 0) {
-                let summaryText =
-                    `📌 *Pinterest Complete*\n\n` +
-                    `🔍 *Query:* ${query}\n` +
-                    `✅ *Sent:* ${sent} image(s)\n`;
-
-                if (failed > 0) {
-                    summaryText += `❌ *Failed:* ${failed}\n`;
-                }
-
-                summaryText += '\n⚡ _Powered by Zenitsu_';
-
-                await sock.sendMessage(jid, {
-                    text: summaryText,
-                    contextInfo: {
-                        forwardingScore: 350,
-                        isForwarded: true,
-                        forwardedNewsletterMessageInfo: {
-                            newsletterJid: '120363425394543602@newsletter',
-                            newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
-                            serverMessageId: 202,
-                        },
-                    },
-                });
-            }
-
+            // Résumé
             try { await sock.sendMessage(jid, { react: { text: sent > 0 ? '✅' : '❌', key: msg.key } }); } catch (_) {}
 
         } catch (err) {
-            console.error('❌ pin error:', err.message);
+            console.error('❌ pinterest:', err.message);
             try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
-
-            await sock.sendMessage(jid, {
-                text:
-                    '❌ *Pinterest Search Failed*\n\n' +
-                    `${err.message}\n\n` +
-                    '⚡ Try a different search term.',
-                contextInfo: {
-                    forwardingScore: 350,
-                    isForwarded: true,
-                    forwardedNewsletterMessageInfo: {
-                        newsletterJid: '120363425394543602@newsletter',
-                        newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
-                        serverMessageId: 202,
-                    },
-                },
-            }, { quoted: msg });
+            await sock.sendMessage(jid, { text: `❌ ${err.message}`, contextInfo: STYLE }, { quoted: msg });
         }
     },
 };

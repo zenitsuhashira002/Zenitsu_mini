@@ -14,8 +14,6 @@ if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 if (!fs.existsSync(CONFIG_FILE)) {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify({
         enabled: false,
-        reactOn: false,
-        emojis: ['⚡'],
         updatedAt: new Date().toISOString(),
     }, null, 2));
 }
@@ -26,7 +24,7 @@ if (!fs.existsSync(CONFIG_FILE)) {
 
 function getConfig() {
     try { return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); }
-    catch (err) { return { enabled: false, reactOn: false, emojis: ['⚡'] }; }
+    catch (err) { return { enabled: false }; }
 }
 
 function saveConfig(data) {
@@ -56,12 +54,6 @@ const STYLE = {
 // JID UTILS
 // ═══════════════════════════════════════
 
-/**
- * Extrait le numéro brut d'un JID (sans @xxx, sans :xx)
- * "50935123456@s.whatsapp.net" → "50935123456"
- * "50935123456:34@s.whatsapp.net" → "50935123456"
- * "82012345678912@lid" → "82012345678912"
- */
 function getRawNumber(jid) {
     if (!jid) return '';
     let num = jid.split('@')[0];
@@ -69,33 +61,17 @@ function getRawNumber(jid) {
     return num.trim();
 }
 
-/**
- * Vérifie si un JID correspond au bot (owner)
- * Compare le numéro brut du sender avec TOUS les IDs possibles du bot
- */
 function isOwner(sock, senderJid) {
     if (!senderJid) return false;
-
     const senderRaw = getRawNumber(senderJid);
-
-    // Récupérer tous les IDs possibles du bot
     const botIds = [];
 
-    // ID principal
-    if (sock.user?.id) {
-        botIds.push(getRawNumber(sock.user.id));
-    }
+    if (sock.user?.id) botIds.push(getRawNumber(sock.user.id));
+    if (sock.user?.lid) botIds.push(getRawNumber(sock.user.lid));
 
-    // LID (Linked Device ID)
-    if (sock.user?.lid) {
-        botIds.push(getRawNumber(sock.user.lid));
-    }
-
-    // Numéro owner depuis la config
     const ownerNumber = process.env.OWNER_NUMBER || '50935729494';
     botIds.push(ownerNumber);
 
-    // Vérifier si le sender correspond à l'un des IDs
     return botIds.includes(senderRaw);
 }
 
@@ -104,7 +80,6 @@ function isOwner(sock, senderJid) {
 // ═══════════════════════════════════════
 
 const viewedStatuses = new Map();
-const COOLDOWN = 300000;
 
 setInterval(() => {
     const now = Date.now();
@@ -114,7 +89,7 @@ setInterval(() => {
 }, 300000);
 
 // ═══════════════════════════════════════
-// MAIN EVENT
+// MAIN EVENT — Vue uniquement, délai 5s
 // ═══════════════════════════════════════
 
 async function autostatusEvent(sock, update) {
@@ -132,6 +107,10 @@ async function autostatusEvent(sock, update) {
 
                 if (viewedStatuses.has(cacheKey)) continue;
 
+                // ⭐ Délai de 5 secondes avant de lire le statut
+                await new Promise(r => setTimeout(r, 5000));
+
+                // Lire le statut (vue uniquement)
                 try {
                     await sock.readMessages([msg.key]);
                     viewedStatuses.set(cacheKey, Date.now());
@@ -140,17 +119,6 @@ async function autostatusEvent(sock, update) {
                         await new Promise(r => setTimeout(r, 2000));
                         try { await sock.readMessages([msg.key]); } catch (_) {}
                     }
-                }
-
-                // React if enabled
-                if (config.reactOn && config.emojis?.length > 0) {
-                    const emoji = config.emojis[Math.floor(Math.random() * config.emojis.length)];
-
-                    try {
-                        await sock.sendMessage(statusOwner, {
-                            react: { text: emoji, key: msg.key },
-                        });
-                    } catch (_) {}
                 }
             }
         }
@@ -168,10 +136,9 @@ async function autostatusCommand(sock, msg, args, jid) {
     try {
         const senderJid = msg.key.participant || msg.key.remoteJid;
 
-        // ⭐ Vérification owner corrigée
         if (!isOwner(sock, senderJid)) {
             return sock.sendMessage(jid, {
-                text: '🚫 *Owner only!*\n\nThis command is restricted to the bot owner.',
+                text: '🚫 *Owner only!*',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
@@ -183,32 +150,33 @@ async function autostatusCommand(sock, msg, args, jid) {
         if (!subCommand) {
             return sock.sendMessage(jid, {
                 text:
-                    '🔄 *Auto Status Settings*\n\n' +
-                    `📱 *Auto View:* ${config.enabled ? '✅ ON' : '❌ OFF'}\n` +
-                    `💫 *Reactions:* ${config.reactOn ? '✅ ON' : '❌ OFF'}\n` +
-                    `🎯 *Emojis:* ${config.emojis?.join(' ') || '⚡'}\n\n` +
+                    '🔄 *Auto Status View*\n\n' +
+                    `📱 *Status:* ${config.enabled ? '✅ ON' : '❌ OFF'}\n\n` +
                     '📌 *Commands:*\n' +
                     '.autostatus on\n' +
                     '.autostatus off\n' +
-                    '.autostatus react on\n' +
-                    '.autostatus react off\n' +
-                    '.autostatus emojis ⚡✨🎉',
+                    '.autostatus status\n\n' +
+                    '⚡ _Zenitsu_',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
 
         // ON
-        else if (subCommand === 'on') {
+        if (subCommand === 'on') {
             config.enabled = true;
             saveConfig(config);
             return sock.sendMessage(jid, {
-                text: '✅ *Auto Status View Enabled*',
+                text:
+                    '✅ *Auto Status View Enabled*\n\n' +
+                    '👁️ Bot will automatically view all statuses.\n' +
+                    '⏱ 5 second delay before each view.\n\n' +
+                    '⚡ _Zenitsu_',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
 
         // OFF
-        else if (subCommand === 'off') {
+        if (subCommand === 'off') {
             config.enabled = false;
             saveConfig(config);
             return sock.sendMessage(jid, {
@@ -217,50 +185,11 @@ async function autostatusCommand(sock, msg, args, jid) {
             }, { quoted: msg });
         }
 
-        // REACT ON
-        else if (subCommand === 'react' && args[1] === 'on') {
-            config.reactOn = true;
-            saveConfig(config);
-            return sock.sendMessage(jid, {
-                text: '💫 *Status Reactions Enabled*',
-                contextInfo: STYLE,
-            }, { quoted: msg });
-        }
-
-        // REACT OFF
-        else if (subCommand === 'react' && args[1] === 'off') {
-            config.reactOn = false;
-            saveConfig(config);
-            return sock.sendMessage(jid, {
-                text: '❌ *Status Reactions Disabled*',
-                contextInfo: STYLE,
-            }, { quoted: msg });
-        }
-
-        // EMOJIS
-        else if (subCommand === 'emojis' || subCommand === 'set') {
-            const newEmojis = args.slice(1).filter(e => e.trim().length > 0);
-            if (newEmojis.length === 0) {
-                return sock.sendMessage(jid, {
-                    text: '⚠️ Provide emojis.\nExample: .autostatus emojis ⚡✨🎉',
-                    contextInfo: STYLE,
-                }, { quoted: msg });
-            }
-            config.emojis = newEmojis;
-            saveConfig(config);
-            return sock.sendMessage(jid, {
-                text: `✅ *Emojis Updated!*\n\n🎯 ${config.emojis.join(' ')}`,
-                contextInfo: STYLE,
-            }, { quoted: msg });
-        }
-
         // UNKNOWN
-        else {
-            return sock.sendMessage(jid, {
-                text: '❌ Unknown command.\n.autostatus on/off | react on/off | emojis ⚡✨',
-                contextInfo: STYLE,
-            }, { quoted: msg });
-        }
+        return sock.sendMessage(jid, {
+            text: '⚠️ Use .autostatus on or .autostatus off',
+            contextInfo: STYLE,
+        }, { quoted: msg });
 
     } catch (err) {
         console.error('❌ autostatus command error:', err.message);

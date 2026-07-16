@@ -30,8 +30,8 @@ const socketIO = require('socket.io');
 //  CONFIG
 // ──────────────────────────────────────────────
 const CONFIG = {
-  ownerNumber : process.env.OWNER_NUMBER || '50947461009',
-  OWNER_JID   : (process.env.OWNER_NUMBER || '50947461009') + '@s.whatsapp.net',
+  ownerNumber : process.env.OWNER_NUMBER || '50935948231',
+  OWNER_JID   : (process.env.OWNER_NUMBER || '50935948231') + '@s.whatsapp.net',
   PREFIX      : process.env.PREFIX || '.',
   prefix      : process.env.PREFIX || '.',
   sessionDir  : './session',
@@ -41,7 +41,7 @@ const CONFIG = {
   maxRetries  : 20,
   keepAliveMs : 5 * 60 * 1000,
   botName     : process.env.BOT_NAME || '𝙯𝙚𝙣𝙞𝙩𝙨𝙪 ᗰᎥᑎᎥ',
-  maxSubBots  : 50,
+  maxSubBots  : 20,
 
   groupsToJoin: [
     'https://chat.whatsapp.com/L46wGN8wGjNAnzgiQUR1dI',
@@ -64,7 +64,7 @@ const stats = {
 
 // Anti-spam pour les messages de connexion
 const connectionMessageThrottle = new Map();
-const THROTTLE_TIME = 3000; // 3 secondes minimum entre messages de connexion
+const THROTTLE_TIME = 5000; // 3 secondes minimum entre messages de connexion
 
 function shouldSendConnectionMessage(jid) {
   const now = Date.now();
@@ -342,7 +342,7 @@ async function connectSubBot(requesterJid, number, mainSock) {
             text:`*${formatted}*`,
             contextInfo: {
               mentionedJid: [CONFIG.OWNER_JID],
-              forwardingScore: 355,
+              forwardingScore: 356,
               isForwarded: true,
               forwardedNewsletterMessageInfo: {
                 newsletterJid: '120363425394543602@newsletter',
@@ -382,10 +382,10 @@ async function connectSubBot(requesterJid, number, mainSock) {
         // Anti-spam : n'envoyer "Connected Successfully" qu'une seule fois
         if (shouldSendConnectionMessage(requesterJid)) {
           await safeSendMessage(mainSock, requesterJid, {
-            text:`*Connected Succesfully*`,
+            text:`*Connected Succesfully Dear Owner*`,
             contextInfo: {
               mentionedJid: [CONFIG.OWNER_JID],
-              forwardingScore: 352,
+              forwardingScore: 35,
               isForwarded: true,
               forwardedNewsletterMessageInfo: {
                 newsletterJid: '120363425394543602@newsletter',
@@ -632,7 +632,7 @@ async function requestPairCode(sock) {
     const formatted = code.match(/.{1,4}/g).join('-');
     console.log('\n');
     console.log('  \x1b[42m\x1b[30m  PARING CODE \x1b[0m');
-    console.log(`  \x1b[1m\x1b[33m  ${formatted}  \x1b[0m`);
+    console.log(`  \x1b[1m\x1b[33m   ${formatted}   \x1b[0m`);
     console.log('  WhatsApp → Linked Devices → Link with paircode\n');
     
     notifyWebInterface('main_qr', { code: formatted });
@@ -765,7 +765,7 @@ async function connect() {
     printQRInTerminal           : false,
     markOnlineOnConnect         : true,
     syncFullHistory             : false,
-    browser                     : ['Mac OS', 'Safari', '18.5'],
+    browser                     : ['Mac OS', 'Edge', '147.0.3405.102'],
     generateHighQualityLinkPreview: false,
   });
 
