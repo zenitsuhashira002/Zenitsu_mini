@@ -124,7 +124,7 @@ module.exports = {
                 `┃ 🔰 *Prefix*: [ ${config?.PREFIX || '.'} ]\n` +
                 `┃ 🤖 *Subbots*: ${subBots?.size || 0}\n` +
                 `┃ 📦 *Cmds*: ${totalLoaded}\n` +
-                `┃\n` +
+                `┃ *USE THE "HELP" COMMAND FOR +*\n` +
                 `┃ 📅 *${dayName}*\n` +
                 `┃ 📆 *${date} ${month} ${year}*\n` +
                 `┃ 🕒 *${time}*\n` +
