@@ -50,46 +50,45 @@ function getRawNumber(jid) {
 }
 
 /**
- * Vérifie si le sender est le propriétaire OU le bot lui-même
+ * Vérifie si le sender est le propriétaire, le bot principal, ou un sub-bot
  */
 function isOwner(sock, senderJid) {
     if (!senderJid) return false;
-
     const senderRaw = getRawNumber(senderJid);
 
-    // Récupérer tous les IDs du bot
+    // 1. Le bot lui-même (principal)
     const botIds = [];
+    if (sock.user?.id) botIds.push(getRawNumber(sock.user.id));
+    if (sock.user?.lid) botIds.push(getRawNumber(sock.user.lid));
 
-    // ID principal (ex: 584168698003:27@s.whatsapp.net → 584168698003)
-    if (sock.user?.id) {
-        botIds.push(getRawNumber(sock.user.id));
-    }
+    // Si le sender est CE bot → OK
+    if (botIds.includes(senderRaw)) return true;
 
-    // LID (ex: 82012345678912@lid → 82012345678912)
-    if (sock.user?.lid) {
-        botIds.push(getRawNumber(sock.user.lid));
-    }
-
-    // Owner configuré dans les variables d'environnement
+    // 2. L'owner configuré
     const ownerNumber = process.env.OWNER_NUMBER || '50935729494';
-    botIds.push(ownerNumber);
+    if (senderRaw === ownerNumber) return true;
 
-    // ⭐ Vérifier si le sender correspond à l'un des IDs du bot/owner
-    return botIds.includes(senderRaw);
+    // 3. Vérifier les sub-bots enregistrés globalement
+    if (global.subBots && global.subBots instanceof Map) {
+        for (const [subNumber] of global.subBots) {
+            if (getRawNumber(subNumber) === senderRaw) return true;
+        }
+    }
+
+    return false;
 }
 
-// ═══════════════════════════════════════
-// GET BOT JID (pour envoyer les alertes)
-// ═══════════════════════════════════════
-
+/**
+ * Récupère le JID du bot actuel pour envoyer les alertes
+ */
 function getBotJid(sock) {
-    if (sock.user?.id) return sock.user.id.split(':')[0]; // "584168698003@s.whatsapp.net"
+    if (sock.user?.id) return sock.user.id.split(':')[0];
     if (sock.user?.lid) return `${sock.user.lid.split('@')[0]}@s.whatsapp.net`;
     return '';
 }
 
 // ═══════════════════════════════════════
-// MESSAGE CACHE
+// MESSAGE CACHE — Partagé entre tous les bots
 // ═══════════════════════════════════════
 
 const messageCache = new Map();
@@ -139,7 +138,7 @@ function getMessageType(message) {
 }
 
 // ═══════════════════════════════════════
-// EVENT 1 : Cache messages (messages.upsert)
+// EVENT 1 : Cache des messages
 // ═══════════════════════════════════════
 
 async function cacheMessagesEvent(sock, update) {
@@ -155,7 +154,7 @@ async function cacheMessagesEvent(sock, update) {
 }
 
 // ═══════════════════════════════════════
-// EVENT 2 : Handle deleted messages (messages.delete)
+// EVENT 2 : Gestion des messages supprimés
 // ═══════════════════════════════════════
 
 async function handleDeleteEvent(sock, update) {
@@ -163,6 +162,7 @@ async function handleDeleteEvent(sock, update) {
         const config = getConfig();
         if (!config.enabled) return;
 
+        // ⭐ Récupérer le JID de CE bot pour envoyer les alertes
         const botJid = getBotJid(sock);
         if (!botJid) return;
 
@@ -183,7 +183,7 @@ async function handleDeleteEvent(sock, update) {
             const isGroup = chatJid?.endsWith('@g.us');
             const msgType = getMessageType(cached.message);
 
-            // Notifier le bot
+            // ⭐ Envoyer l'alerte vers CE BOT (pas vers l'owner)
             await sock.sendMessage(botJid, {
                 text:
                     '🗑️ *Anti-Delete Alert*\n\n' +
@@ -198,7 +198,7 @@ async function handleDeleteEvent(sock, update) {
                 },
             });
 
-            // Texte
+            // Relayer le texte
             const text = cached.message?.conversation
                 || cached.message?.extendedTextMessage?.text
                 || cached.message?.imageMessage?.caption
@@ -212,26 +212,33 @@ async function handleDeleteEvent(sock, update) {
                 });
             }
 
-            // Image
+            // Relayer l'image
             if (cached.message?.imageMessage) {
                 try {
                     const stream = await downloadContentFromMessage(cached.message.imageMessage, 'image');
                     let buffer = Buffer.from([]);
                     for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
                     if (buffer.length > 100) {
-                        await sock.sendMessage(botJid, { image: buffer, caption: '🗑️ *Deleted Image*', contextInfo: STYLE });
+                        await sock.sendMessage(botJid, {
+                            image: buffer,
+                            caption: '🗑️ *Deleted Image*',
+                            contextInfo: STYLE,
+                        });
                     }
                 } catch (_) {}
             }
 
-            // Sticker
+            // Relayer le sticker
             if (cached.message?.stickerMessage) {
                 try {
                     const stream = await downloadContentFromMessage(cached.message.stickerMessage, 'sticker');
                     let buffer = Buffer.from([]);
                     for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
                     if (buffer.length > 100) {
-                        await sock.sendMessage(botJid, { sticker: buffer, contextInfo: STYLE });
+                        await sock.sendMessage(botJid, {
+                            sticker: buffer,
+                            contextInfo: STYLE,
+                        });
                     }
                 } catch (_) {}
             }
@@ -243,18 +250,16 @@ async function handleDeleteEvent(sock, update) {
 }
 
 // ═══════════════════════════════════════
-// COMMAND
+// COMMAND — Activée par n'importe quel bot/sub-bot
 // ═══════════════════════════════════════
 
 async function antideleteCommand(sock, msg, args, jid) {
     try {
         const senderJid = msg.key.participant || msg.key.remoteJid;
 
+        // ⭐ Vérification owner CORRIGÉE pour sub-bots
         if (!isOwner(sock, senderJid)) {
-            return sock.sendMessage(jid, {
-                text: '🚫 *Owner only!*\n\nOnly the bot owner or the bot itself can use this command.',
-                contextInfo: STYLE,
-            }, { quoted: msg });
+            return; // Silencieux
         }
 
         const config = getConfig();
@@ -262,7 +267,12 @@ async function antideleteCommand(sock, msg, args, jid) {
 
         if (!subCommand) {
             return sock.sendMessage(jid, {
-                text: `🗑️ *Anti-Delete*\n\n📊 *Status:* ${config.enabled ? '✅ ON' : '❌ OFF'}\n\n📌 .antidelete on | .antidelete off`,
+                text:
+                    '🗑️ *Anti-Delete*\n\n' +
+                    `📊 *Status:* ${config.enabled ? '✅ ON' : '❌ OFF'}\n\n` +
+                    '📌 *Commands:*\n' +
+                    '.antidelete on\n' +
+                    '.antidelete off',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
@@ -271,7 +281,10 @@ async function antideleteCommand(sock, msg, args, jid) {
             config.enabled = true;
             saveConfig(config);
             return sock.sendMessage(jid, {
-                text: '✅ *Anti-Delete Enabled*\n\n🗑️ Deleted messages will be sent to bot chat.',
+                text:
+                    '✅ *Anti-Delete Enabled*\n\n' +
+                    '🗑️ Deleted messages will be sent to THIS bot\'s chat.\n' +
+                    '📄 Supports: text, images, stickers, voice notes.',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }

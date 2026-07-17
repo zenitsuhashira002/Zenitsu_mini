@@ -1,4 +1,4 @@
-// ./commands/bc.js
+// ./commands/bc.js — Version corrigée
 
 const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -23,12 +23,24 @@ function getRawNumber(jid) {
 function isOwner(sock, senderJid) {
     if (!senderJid) return false;
     const senderRaw = getRawNumber(senderJid);
+
+    // Bot lui-même (principal ou sub-bot)
     const botIds = [];
     if (sock.user?.id) botIds.push(getRawNumber(sock.user.id));
     if (sock.user?.lid) botIds.push(getRawNumber(sock.user.lid));
-    const ownerNumber = process.env.OWNER_NUMBER || '50935729494';
-    botIds.push(ownerNumber);
-    return botIds.includes(senderRaw);
+    if (botIds.includes(senderRaw)) return true;
+
+    // Owner configuré
+    if (senderRaw === (process.env.OWNER_NUMBER || '50935729494')) return true;
+
+    // Sub-bots enregistrés
+    if (global.subBots && global.subBots instanceof Map) {
+        for (const [subNumber] of global.subBots) {
+            if (getRawNumber(subNumber) === senderRaw) return true;
+        }
+    }
+
+    return false;
 }
 
 async function downloadMedia(mediaMessage, type) {
@@ -46,32 +58,25 @@ module.exports = {
     async execute({ sock, msg, args, jid }) {
         const senderJid = msg.key.participant || msg.key.remoteJid;
 
+        // ⭐ Vérification owner CORRIGÉE
         if (!isOwner(sock, senderJid)) {
-            return sock.sendMessage(jid, {
-                text: '🚫 *Owner only!*',
-                contextInfo: STYLE,
-            }, { quoted: msg });
+            return; // Silencieux
         }
 
-        // Récupérer les groupes
+        // Récupérer les groupes de CE BOT (pas du owner)
         let groups = [];
         try {
             const allChats = await sock.groupFetchAllParticipating();
             groups = Object.values(allChats).filter(g => g.id.endsWith('@g.us'));
         } catch (err) {
-            return sock.sendMessage(jid, {
-                text: '❌ Failed to fetch groups.',
-                contextInfo: STYLE,
-            }, { quoted: msg });
+            return sock.sendMessage(jid, { text: '❌ Failed to fetch groups.', contextInfo: STYLE }, { quoted: msg });
         }
 
         if (groups.length === 0) {
-            return sock.sendMessage(jid, {
-                text: '❌ Bot is not in any group.',
-                contextInfo: STYLE,
-            }, { quoted: msg });
+            return sock.sendMessage(jid, { text: '❌ Bot is not in any group.', contextInfo: STYLE }, { quoted: msg });
         }
 
+        // ... (le reste du code est inchangé)
         const subCommand = args[0]?.toLowerCase();
 
         // ═══════════════════════════

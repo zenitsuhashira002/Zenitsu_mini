@@ -37,11 +37,56 @@ module.exports = {
         try { await sock.sendMessage(jid, { react: { text: '🔍', key: msg.key } }); } catch (_) {}
 
         try {
-            const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=5&langRestrict=en,fr`;
-            const { data } = await axios.get(url, { timeout: 15000 });
+            let books = [];
 
-            const books = data?.items;
-            if (!books || books.length === 0) {
+            // Méthode 1 : Google Books API
+            try {
+                const { data } = await axios.get(
+                    `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=5&langRestrict=en,fr`,
+                    { timeout: 15000 }
+                );
+                if (data?.items) {
+                    books = data.items.map(book => {
+                        const info = book.volumeInfo || {};
+                        return {
+                            title: info.title || 'Unknown',
+                            authors: info.authors?.join(', ') || 'Unknown',
+                            publisher: info.publisher || '',
+                            publishedDate: info.publishedDate || '',
+                            pages: info.pageCount || '',
+                            rating: info.averageRating || '',
+                            description: info.description?.slice(0, 300) || '',
+                            thumbnail: info.imageLinks?.thumbnail?.replace('http:', 'https:') || '',
+                            previewLink: info.previewLink || info.canonicalVolumeLink || '',
+                        };
+                    });
+                }
+            } catch (_) {}
+
+            // Méthode 2 : Open Library
+            if (!books.length) {
+                try {
+                    const { data } = await axios.get(
+                        `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=5`,
+                        { timeout: 15000 }
+                    );
+                    if (data?.docs) {
+                        books = data.docs.slice(0, 5).map(doc => ({
+                            title: doc.title || 'Unknown',
+                            authors: doc.author_name?.join(', ') || 'Unknown',
+                            publisher: doc.publisher?.[0] || '',
+                            publishedDate: doc.first_publish_year || '',
+                            pages: doc.number_of_pages_median || '',
+                            rating: doc.ratings_average || '',
+                            description: doc.first_sentence?.join('. ')?.slice(0, 300) || '',
+                            thumbnail: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : '',
+                            previewLink: `https://openlibrary.org${doc.key}`,
+                        }));
+                    }
+                } catch (_) {}
+            }
+
+            if (!books.length) {
                 try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
                 return sock.sendMessage(jid, {
                     text: '❌ No books found.',
@@ -49,39 +94,28 @@ module.exports = {
                 }, { quoted: msg });
             }
 
-            // Envoyer les 5 premiers résultats
+            // Envoyer les résultats
             for (let i = 0; i < Math.min(books.length, 5); i++) {
                 const book = books[i];
-                const info = book.volumeInfo || {};
-
-                const title = info.title || 'Unknown';
-                const authors = info.authors?.join(', ') || 'Unknown';
-                const publisher = info.publisher || '';
-                const publishedDate = info.publishedDate || '';
-                const pages = info.pageCount || '';
-                const rating = info.averageRating || '';
-                const description = info.description?.slice(0, 500) || '';
-                const thumbnail = info.imageLinks?.thumbnail || '';
-                const previewLink = info.previewLink || info.canonicalVolumeLink || '';
 
                 let caption =
                     `📖 *Book ${i + 1}/${Math.min(books.length, 5)}*\n\n` +
-                    `📌 *Title:* ${title}\n` +
-                    `✍️ *Author(s):* ${authors}\n`;
+                    `📌 *Title:* ${book.title}\n` +
+                    `✍️ *Author(s):* ${book.authors}\n`;
 
-                if (publisher) caption += `🏢 *Publisher:* ${publisher}\n`;
-                if (publishedDate) caption += `📅 *Published:* ${publishedDate}\n`;
-                if (pages) caption += `📄 *Pages:* ${pages}\n`;
-                if (rating) caption += `⭐ *Rating:* ${rating}/5\n`;
-                if (previewLink) caption += `🔗 ${previewLink}\n`;
-                if (description) caption += `\n📝 *Desc:* ${description.slice(0, 300)}...\n`;
+                if (book.publisher) caption += `🏢 *Publisher:* ${book.publisher}\n`;
+                if (book.publishedDate) caption += `📅 *Published:* ${book.publishedDate}\n`;
+                if (book.pages) caption += `📄 *Pages:* ${book.pages}\n`;
+                if (book.rating) caption += `⭐ *Rating:* ${book.rating}/5\n`;
+                if (book.previewLink) caption += `🔗 ${book.previewLink}\n`;
+                if (book.description) caption += `\n📝 ${book.description}...\n`;
 
                 caption += '\n⚡ _Zenitsu_';
 
-                if (thumbnail && thumbnail.startsWith('http')) {
+                if (book.thumbnail && book.thumbnail.startsWith('http')) {
                     try {
                         await sock.sendMessage(jid, {
-                            image: { url: thumbnail },
+                            image: { url: book.thumbnail },
                             caption: caption,
                             contextInfo: STYLE,
                         }, { quoted: i === 0 ? msg : undefined });

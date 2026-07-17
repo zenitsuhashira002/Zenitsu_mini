@@ -12,19 +12,6 @@ const STYLE = {
     },
 };
 
-const LANGUAGES = {
-    'fr': 'Français',
-    'en': 'English',
-    'es': 'Español',
-    'de': 'Deutsch',
-    'it': 'Italiano',
-    'pt': 'Português',
-    'ar': 'العربية',
-    'ru': 'Русский',
-    'ja': '日本語',
-    'zh': '中文',
-};
-
 module.exports = {
     name: 'wiki',
     aliases: ['wikipedia', 'encyclopedia'],
@@ -34,8 +21,7 @@ module.exports = {
         let lang = 'en';
         let query = '';
 
-        // Détecter la langue
-        if (args.length >= 2 && args[0].length === 2 && LANGUAGES[args[0]]) {
+        if (args.length >= 2 && /^[a-z]{2}$/.test(args[0])) {
             lang = args[0];
             query = args.slice(1).join(' ');
         } else {
@@ -43,18 +29,16 @@ module.exports = {
         }
 
         if (!query || query.trim().length < 2) {
-            const langList = Object.entries(LANGUAGES).map(([k, v]) => `  ${k} — ${v}`).join('\n');
             return sock.sendMessage(jid, {
                 text:
                     '📚 *Wikipedia Search*\n\n' +
                     '⚡ *Usage:*\n' +
                     '.wiki <lang> <query>\n' +
                     '.wiki <query>\n\n' +
-                    '🌍 *Languages:*\n' + langList + '\n\n' +
                     '✨ *Examples:*\n' +
                     '.wiki JavaScript\n' +
                     '.wiki fr Tour Eiffel\n' +
-                    '.wiki es Machu Picchu',
+                    '.wiki es México',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
@@ -62,12 +46,59 @@ module.exports = {
         try { await sock.sendMessage(jid, { react: { text: '🔍', key: msg.key } }); } catch (_) {}
 
         try {
-            // Recherche via Wikipedia API
-            const searchUrl = `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*`;
-            const { data: searchData } = await axios.get(searchUrl, { timeout: 15000 });
+            // Essayer plusieurs APIs
+            let pageInfo = null;
 
-            const results = searchData?.query?.search;
-            if (!results || results.length === 0) {
+            // Méthode 1 : API Wikipedia directe
+            try {
+                const searchUrl = `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*`;
+                const { data: searchData } = await axios.get(searchUrl, { timeout: 15000 });
+                const results = searchData?.query?.search;
+                if (results?.length) {
+                    const pageTitle = results[0].title;
+                    const summaryUrl = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(pageTitle)}`;
+                    const { data: summaryData } = await axios.get(summaryUrl, { timeout: 15000 });
+                    pageInfo = summaryData;
+                }
+            } catch (_) {}
+
+            // Méthode 2 : NexRay Wikipedia
+            if (!pageInfo) {
+                try {
+                    const { data } = await axios.get(
+                        `https://api.nexray.eu.cc/search/wikipedia?q=${encodeURIComponent(query)}&lang=${lang}`,
+                        { timeout: 15000 }
+                    );
+                    if (data?.result) {
+                        pageInfo = {
+                            title: data.result.title || query,
+                            extract: data.result.extract || data.result.description || '',
+                            content_urls: { desktop: { page: data.result.url || '' } },
+                            thumbnail: data.result.thumbnail ? { source: data.result.thumbnail } : null,
+                        };
+                    }
+                } catch (_) {}
+            }
+
+            // Méthode 3 : GiftedTech Wikipedia
+            if (!pageInfo) {
+                try {
+                    const { data } = await axios.get(
+                        `https://api.giftedtech.co.ke/api/search/wikipedia?apikey=gifted&query=${encodeURIComponent(query)}&lang=${lang}`,
+                        { timeout: 15000 }
+                    );
+                    if (data?.result) {
+                        pageInfo = {
+                            title: data.result.title || query,
+                            extract: data.result.extract || data.result.description || '',
+                            content_urls: { desktop: { page: data.result.url || '' } },
+                            thumbnail: data.result.image ? { source: data.result.image } : null,
+                        };
+                    }
+                } catch (_) {}
+            }
+
+            if (!pageInfo || (!pageInfo.extract && !pageInfo.title)) {
                 try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
                 return sock.sendMessage(jid, {
                     text: '❌ No Wikipedia results found.',
@@ -75,33 +106,17 @@ module.exports = {
                 }, { quoted: msg });
             }
 
-            // Prendre le premier résultat
-            const page = results[0];
-            const pageTitle = page.title;
-
-            // Récupérer le résumé
-            const summaryUrl = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(pageTitle)}`;
-            const { data: summaryData } = await axios.get(summaryUrl, { timeout: 15000 });
-
-            const title = summaryData?.title || pageTitle;
-            const extract = summaryData?.extract || page.snippet?.replace(/<[^>]+>/g, '') || '';
-            const pageUrl = summaryData?.content_urls?.desktop?.page || `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(pageTitle)}`;
-            const imageUrl = summaryData?.thumbnail?.source || summaryData?.originalimage?.source || '';
-            const description = summaryData?.description || '';
-
-            // Construire la réponse
-            const maxExtract = 1500;
-            const truncatedExtract = extract.length > maxExtract
-                ? extract.slice(0, maxExtract) + '...'
-                : extract;
+            const title = pageInfo.title || query;
+            const extract = (pageInfo.extract || '').slice(0, 1500);
+            const pageUrl = pageInfo.content_urls?.desktop?.page || `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(title)}`;
+            const imageUrl = pageInfo.thumbnail?.source || '';
 
             let caption =
                 '📚 *Wikipedia*\n\n' +
                 `📌 *Title:* ${title}\n` +
-                (description ? `📝 *Desc:* ${description}\n` : '') +
-                `🌍 *Lang:* ${LANGUAGES[lang] || lang}\n` +
+                `🌍 *Lang:* ${lang}\n` +
                 `🔗 ${pageUrl}\n\n` +
-                `📄 *Summary:*\n${truncatedExtract}\n\n` +
+                `📄 *Summary:*\n${extract}${extract.length >= 1500 ? '...' : ''}\n\n` +
                 '⚡ _Zenitsu_';
 
             if (imageUrl && imageUrl.startsWith('http')) {

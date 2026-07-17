@@ -2,6 +2,95 @@
 
 const axios = require('axios');
 
+const STYLE = {
+    forwardingScore: 350,
+    isForwarded: true,
+    forwardedNewsletterMessageInfo: {
+        newsletterJid: '120363425394543602@newsletter',
+        newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
+        serverMessageId: 202,
+    },
+};
+
+// ═══════════════════════════════════════
+// SEARCH APIS
+// ═══════════════════════════════════════
+
+const SEARCH_APIS = [
+    {
+        name: 'PrinceTech Google Image',
+        url: (q) => `https://api.princetechn.com/api/search/googleimage?apikey=prince&query=${encodeURIComponent(q)}`,
+        timeout: 15000,
+        extract: (data) => {
+            let results = [];
+            if (data?.result && Array.isArray(data.result)) results = data.result;
+            else if (data?.data && Array.isArray(data.data)) results = data.data;
+            else if (Array.isArray(data)) results = data;
+            return results
+                .map(item => ({
+                    image: item.image || item.url || item.thumbnail || item.source || '',
+                    title: item.title || '',
+                }))
+                .filter(item => item.image && item.image.startsWith('http'));
+        },
+    },
+    {
+        name: 'Sylphyy Image Search',
+        url: (q) => `https://sylphyy.xyz/search/image?q=${encodeURIComponent(q)}`,
+        timeout: 15000,
+        extract: (data) => {
+            let results = [];
+            if (data?.result && Array.isArray(data.result)) results = data.result;
+            else if (data?.data && Array.isArray(data.data)) results = data.data;
+            else if (Array.isArray(data)) results = data;
+            return results
+                .map(item => ({
+                    image: item.image || item.url || item.thumbnail || item.source || item.url || '',
+                    title: item.title || item.description || '',
+                }))
+                .filter(item => item.image && item.image.startsWith('http'));
+        },
+    },
+    {
+        name: 'NexRay Image Search',
+        url: (q) => `https://api.nexray.eu.cc/search/image?q=${encodeURIComponent(q)}`,
+        timeout: 15000,
+        extract: (data) => {
+            let results = [];
+            if (data?.result && Array.isArray(data.result)) results = data.result;
+            else if (data?.data && Array.isArray(data.data)) results = data.data;
+            else if (Array.isArray(data)) results = data;
+            return results
+                .map(item => ({
+                    image: item.image || item.url || item.thumbnail || item.source || '',
+                    title: item.title || item.description || '',
+                }))
+                .filter(item => item.image && item.image.startsWith('http'));
+        },
+    },
+    {
+        name: 'GiftedTech Google Image',
+        url: (q) => `https://api.giftedtech.co.ke/api/search/googleimage?apikey=gifted&query=${encodeURIComponent(q)}`,
+        timeout: 15000,
+        extract: (data) => {
+            let results = [];
+            if (data?.result && Array.isArray(data.result)) results = data.result;
+            else if (data?.data && Array.isArray(data.data)) results = data.data;
+            else if (Array.isArray(data)) results = data;
+            return results
+                .map(item => ({
+                    image: item.image || item.url || item.thumbnail || item.source || (typeof item === 'string' ? item : ''),
+                    title: item.title || '',
+                }))
+                .filter(item => item.image && item.image.startsWith('http'));
+        },
+    },
+];
+
+// ═══════════════════════════════════════
+// COMMAND
+// ═══════════════════════════════════════
+
 module.exports = {
     name: 'googleimage',
     aliases: ['gimage', 'imgsearch', 'searchimage', 'gi'],
@@ -20,115 +109,97 @@ module.exports = {
                     '.googleimage Cute cats\n' +
                     '.googleimage Sunset over mountains\n' +
                     '.googleimage Cyberpunk city\n\n' +
-                    '💡 Returns up to 5 images from Google.',
-                contextInfo: {
-                    forwardingScore: 350,
-                    isForwarded: true,
-                    forwardedNewsletterMessageInfo: {
-                        newsletterJid: '120363425394543602@newsletter',
-                        newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
-                        serverMessageId: 202,
-                    },
-                },
+                    '💡 Returns up to 5 images.\n' +
+                    '🔄 4 search sources',
+                contextInfo: STYLE,
             }, { quoted: msg });
         }
 
-        // ── Reaction ──
         try { await sock.sendMessage(jid, { react: { text: '🖼️', key: msg.key } }); } catch (_) {}
 
         try {
-            const { data } = await axios.get(
-                `https://api.giftedtech.co.ke/api/search/googleimage?apikey=gifted&query=${encodeURIComponent(query)}`,
-                { timeout: 30000 }
-            );
+            // Chercher avec toutes les APIs
+            let allImages = [];
+            let usedSource = '';
 
-            // ── Extract images ──
-            let images = [];
-
-            if (data?.result && Array.isArray(data.result)) {
-                images = data.result;
-            } else if (data?.results && Array.isArray(data.results)) {
-                images = data.results;
-            } else if (data?.images && Array.isArray(data.images)) {
-                images = data.images;
-            } else if (Array.isArray(data)) {
-                images = data;
-            }
-
-            // Filter valid URLs
-            images = images
-                .map(img => typeof img === 'string' ? img : img.url || img.link || img.src || img.image || '')
-                .filter(url => url && url.startsWith('http'))
-                .slice(0, 5);
-
-            if (images.length === 0) {
-                throw new Error('No images found');
-            }
-
-            // ── Send images one by one ──
-            for (let i = 0; i < images.length; i++) {
+            for (const api of SEARCH_APIS) {
                 try {
-                    await sock.sendMessage(jid, {
-                        image: { url: images[i] },
-                        caption:
-                            `🖼️ *Image ${i + 1}/${images.length}*\n` +
-                            `🔍 Search: ${query}\n` +
-                            `🔗 ${images[i]}\n\n` +
-                            '⚡ _Google Image Search_',
-                        contextInfo: {
-                            forwardingScore: 350,
-                            isForwarded: true,
-                            forwardedNewsletterMessageInfo: {
-                                newsletterJid: '120363425394543602@newsletter',
-                                newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
-                                serverMessageId: 202,
-                            },
-                        },
-                    }, { quoted: i === 0 ? msg : undefined });
+                    console.log(`🖼️ Google Image: ${api.name}...`);
+                    const { data } = await axios.get(api.url(query), { timeout: api.timeout });
+                    const results = api.extract(data);
 
-                    // Small delay between images
-                    await new Promise(r => setTimeout(r, 1000));
-                } catch (imgErr) {
-                    console.log(`⚠️ Image ${i + 1} send failed:`, imgErr.message);
+                    if (results.length > 0) {
+                        allImages = results;
+                        usedSource = api.name;
+                        console.log(`✅ ${api.name}: ${results.length} images`);
+                        break;
+                    }
+                } catch (err) {
+                    console.log(`⚠️ ${api.name}: ${err.message}`);
+                }
+            }
 
-                    // Send as link fallback
-                    await sock.sendMessage(jid, {
-                        text:
-                            `🖼️ *Image ${i + 1}*\n` +
-                            `🔗 ${images[i]}`,
-                        contextInfo: {
-                            forwardingScore: 350,
-                            isForwarded: true,
-                            forwardedNewsletterMessageInfo: {
-                                newsletterJid: '120363425394543602@newsletter',
-                                newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
-                                serverMessageId: 202,
-                            },
-                        },
+            if (allImages.length === 0) {
+                try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+                return sock.sendMessage(jid, {
+                    text: '❌ No images found. Try a different search term.',
+                    contextInfo: STYLE,
+                }, { quoted: msg });
+            }
+
+            // Dédupliquer + limiter à 5
+            const seen = new Set();
+            const unique = allImages.filter(img => img.image && !seen.has(img.image) && seen.add(img.image));
+            const selected = unique.slice(0, 5);
+
+            console.log(`📌 Sending ${selected.length} images from ${usedSource}...`);
+
+            // Envoyer les images une par une
+            for (let i = 0; i < selected.length; i++) {
+                const item = selected[i];
+
+                await new Promise(r => setTimeout(r, 1200));
+
+                try {
+                    // Essayer l'envoi direct par URL
+                    try {
+                        await sock.sendMessage(jid, {
+                            image: { url: item.image },
+                            caption: `🖼️ *Image ${i + 1}/${selected.length}*\n🔍 ${query}\n${item.title ? `📝 ${item.title.slice(0, 80)}\n` : ''}⚡ _Zenitsu_`,
+                            contextInfo: STYLE,
+                        }, { quoted: i === 0 ? msg : undefined });
+                        continue;
+                    } catch (_) {}
+
+                    // Fallback : télécharger en buffer
+                    const imgRes = await axios.get(item.image, {
+                        responseType: 'arraybuffer',
+                        timeout: 25000,
+                        headers: { 'User-Agent': 'Mozilla/5.0' },
                     });
+                    const buffer = Buffer.from(imgRes.data);
+
+                    if (buffer.length > 500) {
+                        await sock.sendMessage(jid, {
+                            image: buffer,
+                            caption: `🖼️ *Image ${i + 1}/${selected.length}*\n🔍 ${query}\n⚡ _Zenitsu_`,
+                            contextInfo: STYLE,
+                        }, { quoted: i === 0 ? msg : undefined });
+                    }
+
+                } catch (err) {
+                    console.log(`⚠️ Image ${i + 1} failed:`, err.message);
                 }
             }
 
             try { await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
 
         } catch (err) {
-            console.error('❌ googleimage error:', err.message);
+            console.error('❌ googleimage:', err.message);
             try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
-
             await sock.sendMessage(jid, {
-                text:
-                    '❌ *Image Search Failed*\n\n' +
-                    'No images found or service unavailable.\n\n' +
-                    '⚡ Try a different search term.',
-                contextInfo: {
-                    forwardingScore: 350,
-                    isForwarded: true,
-                    forwardedNewsletterMessageInfo: {
-                        newsletterJid: '120363425394543602@newsletter',
-                        newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
-                        serverMessageId: 202,
-                    },
-                },
+                text: '❌ Image search failed.',
+                contextInfo: STYLE,
             }, { quoted: msg });
         }
     },

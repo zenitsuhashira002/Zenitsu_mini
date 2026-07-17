@@ -17,13 +17,31 @@ function getRawNumber(jid) {
 function isOwner(sock, senderJid) {
     if (!senderJid) return false;
     const senderRaw = getRawNumber(senderJid);
+
+    // 1. Vérifier si le sender est le bot LUI-MÊME (sub-bot ou principal)
     const botIds = [];
     if (sock.user?.id) botIds.push(getRawNumber(sock.user.id));
     if (sock.user?.lid) botIds.push(getRawNumber(sock.user.lid));
-    botIds.push(process.env.OWNER_NUMBER || '50935729494');
-    return botIds.includes(senderRaw);
-}
 
+    // Si le sender est le bot lui-même → OK
+    if (botIds.includes(senderRaw)) return true;
+
+    // 2. Vérifier si le sender est l'owner configuré
+    const ownerNumber = process.env.OWNER_NUMBER || '50935729494';
+    if (senderRaw === ownerNumber) return true;
+
+    // 3. Vérifier si le sender est un sub-bot enregistré
+    // (Les sub-bots sont stockés dans une Map globale ou dans le main.js)
+    if (global.subBots && global.subBots instanceof Map) {
+        for (const [subNumber, subData] of global.subBots) {
+            if (getRawNumber(subNumber) === senderRaw && subData.sock === sock) {
+                return true; // Ce sub-bot est bien le sender
+            }
+        }
+    }
+
+    return false;
+}
 const STYLE = {
     forwardingScore: 350,
     isForwarded: true,
