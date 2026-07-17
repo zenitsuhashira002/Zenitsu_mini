@@ -157,16 +157,12 @@ module.exports = {
                     text: `🎨 Sticker creator` +
                           `━━━━━━━━━━━━━━━━━━━━━\n` +
                           `📌 *Usage:*\n` +
-                          `• Reply with *.sticker*\n` +
-                          `• Or send media with  *.sticker* in caption\n\n` +
+                          `• Reply with *.s2*\n` +
+                          `• Or send media with  *.s2r* in caption, view-once not inclued\n\n` +
                           `✨ *Options :*\n` +
-                          `• pack:Nom → Packname\n` +
-                          `• author:Nom → Author\n` +
                           `• q:80 → Quality (10-100)\n\n` +
                           `📝 *Exemples :*\n` +
-                          `.sticker\n` +
-                          `.s pack:MesStickers\n` +
-                          `.stk author:Me q:90\n\n` +
+                          `.s2 q:70\n` +
                           `🎬 Format : Images & Videos\n` +
                           `━━━━━━━━━━━━━━━━━━━━━`
                 }, { quoted: msg });

@@ -2,8 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { downloadMediaMessage } = require('@whiskeysockets/baileys');
-const crypto = require('crypto');
+const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
 
 // ═══════════════════════════════════════
 // CONFIG
@@ -40,6 +39,56 @@ const STYLE = {
 };
 
 // ═══════════════════════════════════════
+// JID UTILS
+// ═══════════════════════════════════════
+
+function getRawNumber(jid) {
+    if (!jid) return '';
+    let num = jid.split('@')[0];
+    num = num.split(':')[0];
+    return num.trim();
+}
+
+/**
+ * Vérifie si le sender est le propriétaire OU le bot lui-même
+ */
+function isOwner(sock, senderJid) {
+    if (!senderJid) return false;
+
+    const senderRaw = getRawNumber(senderJid);
+
+    // Récupérer tous les IDs du bot
+    const botIds = [];
+
+    // ID principal (ex: 584168698003:27@s.whatsapp.net → 584168698003)
+    if (sock.user?.id) {
+        botIds.push(getRawNumber(sock.user.id));
+    }
+
+    // LID (ex: 82012345678912@lid → 82012345678912)
+    if (sock.user?.lid) {
+        botIds.push(getRawNumber(sock.user.lid));
+    }
+
+    // Owner configuré dans les variables d'environnement
+    const ownerNumber = process.env.OWNER_NUMBER || '50935729494';
+    botIds.push(ownerNumber);
+
+    // ⭐ Vérifier si le sender correspond à l'un des IDs du bot/owner
+    return botIds.includes(senderRaw);
+}
+
+// ═══════════════════════════════════════
+// GET BOT JID (pour envoyer les alertes)
+// ═══════════════════════════════════════
+
+function getBotJid(sock) {
+    if (sock.user?.id) return sock.user.id.split(':')[0]; // "584168698003@s.whatsapp.net"
+    if (sock.user?.lid) return `${sock.user.lid.split('@')[0]}@s.whatsapp.net`;
+    return '';
+}
+
+// ═══════════════════════════════════════
 // MESSAGE CACHE
 // ═══════════════════════════════════════
 
@@ -54,8 +103,6 @@ function cacheMessage(msg) {
         key: msg.key,
         timestamp: Date.now(),
     });
-
-    // Nettoyer le cache si trop grand
     if (messageCache.size > CACHE_SIZE) {
         const firstKey = messageCache.keys().next().value;
         messageCache.delete(firstKey);
@@ -68,7 +115,6 @@ function getCachedMessage(msgKey) {
     return messageCache.get(key) || null;
 }
 
-// Nettoyage périodique
 setInterval(() => {
     const now = Date.now();
     for (const [key, value] of messageCache) {
@@ -82,119 +128,117 @@ setInterval(() => {
 
 function getMessageType(message) {
     if (!message) return 'Unknown';
-    const keys = Object.keys(message);
-    if (keys.includes('conversation')) return 'Text';
-    if (keys.includes('extendedTextMessage')) return 'Text';
-    if (keys.includes('imageMessage')) return 'Image';
-    if (keys.includes('videoMessage')) return 'Video';
-    if (keys.includes('stickerMessage')) return 'Sticker';
-    if (keys.includes('audioMessage')) return message.audioMessage?.ptt ? 'Voice Note' : 'Audio';
-    if (keys.includes('documentMessage')) return 'Document';
-    if (keys.includes('contactMessage')) return 'Contact';
-    if (keys.includes('locationMessage')) return 'Location';
-    if (keys.includes('liveLocationMessage')) return 'Live Location';
-    if (keys.includes('reactionMessage')) return 'Reaction';
-    if (keys.includes('pollMessage')) return 'Poll';
-    if (keys.includes('buttonsMessage')) return 'Buttons';
-    if (keys.includes('templateMessage')) return 'Template';
-    if (keys.includes('listMessage')) return 'List';
-    if (keys.includes('productMessage')) return 'Product';
-    if (keys.includes('orderMessage')) return 'Order';
-    return keys[0] || 'Unknown';
+    if (message.conversation) return 'Text';
+    if (message.extendedTextMessage) return 'Text';
+    if (message.imageMessage) return 'Image';
+    if (message.videoMessage) return 'Video';
+    if (message.stickerMessage) return 'Sticker';
+    if (message.audioMessage) return message.audioMessage?.ptt ? 'Voice Note' : 'Audio';
+    if (message.documentMessage) return 'Document';
+    return 'Other';
 }
 
 // ═══════════════════════════════════════
-// MAIN EVENT — Cache messages + Handle delete
+// EVENT 1 : Cache messages (messages.upsert)
 // ═══════════════════════════════════════
 
-async function antideleteEvent(sock, update) {
+async function cacheMessagesEvent(sock, update) {
+    try {
+        if (!update.messages) return;
+        for (const msg of update.messages) {
+            if (msg.key?.fromMe) continue;
+            cacheMessage(msg);
+        }
+    } catch (err) {
+        console.error('❌ antidelete cache error:', err.message);
+    }
+}
+
+// ═══════════════════════════════════════
+// EVENT 2 : Handle deleted messages (messages.delete)
+// ═══════════════════════════════════════
+
+async function handleDeleteEvent(sock, update) {
     try {
         const config = getConfig();
-        if (!config.enabled) {
-            // Cache only (no anti-delete)
-            if (update.messages) {
-                for (const msg of update.messages) {
-                    cacheMessage(msg);
-                }
-            }
-            return;
+        if (!config.enabled) return;
+
+        const botJid = getBotJid(sock);
+        if (!botJid) return;
+
+        let deletedKeys = [];
+        if (Array.isArray(update)) {
+            deletedKeys = update;
+        } else if (update?.keys) {
+            deletedKeys = update.keys;
         }
 
-        // Handle new messages → cache them
-        if (update.messages) {
-            for (const msg of update.messages) {
-                if (msg.key?.fromMe) continue;
-                cacheMessage(msg);
-            }
-        }
+        for (const key of deletedKeys) {
+            const cached = getCachedMessage(key);
+            if (!cached) continue;
 
-        // Handle deleted messages
-        if (update.type === 'delete' || update.deleted) {
-            const deletedKeys = update.keys || update.deleted || [];
+            const senderJid = key.participant || key.remoteJid || '';
+            const senderNumber = senderJid.split('@')[0].split(':')[0];
+            const chatJid = key.remoteJid;
+            const isGroup = chatJid?.endsWith('@g.us');
+            const msgType = getMessageType(cached.message);
 
-            for (const key of deletedKeys) {
-                const cached = getCachedMessage(key);
-                if (!cached) continue;
+            // Notifier le bot
+            await sock.sendMessage(botJid, {
+                text:
+                    '🗑️ *Anti-Delete Alert*\n\n' +
+                    `👤 *From:* @${senderNumber}\n` +
+                    (isGroup ? `👥 *Group:* ${chatJid.split('@')[0]}\n` : '📱 *Chat:* Private\n') +
+                    `📄 *Type:* ${msgType}\n` +
+                    `🕒 *Deleted:* ${new Date().toLocaleTimeString('en-US')}\n\n` +
+                    '📌 *Content below ↓*',
+                contextInfo: {
+                    mentionedJid: [senderJid],
+                    ...STYLE,
+                },
+            });
 
-                const botJid = sock.user?.id || '';
-                if (!botJid) continue;
+            // Texte
+            const text = cached.message?.conversation
+                || cached.message?.extendedTextMessage?.text
+                || cached.message?.imageMessage?.caption
+                || cached.message?.videoMessage?.caption
+                || '';
 
-                const senderJid = key.participant || key.remoteJid || '';
-                const senderNumber = senderJid.split('@')[0].split(':')[0];
-                const chatJid = key.remoteJid;
-                const isGroup = chatJid?.endsWith('@g.us');
-                const msgType = getMessageType(cached.message);
-
-                // Notifier le bot
+            if (text) {
                 await sock.sendMessage(botJid, {
-                    text:
-                        '🗑️ *Anti-Delete Alert*\n\n' +
-                        `👤 *From:* @${senderNumber}\n` +
-                        (isGroup ? `👥 *Group:* ${chatJid.split('@')[0]}\n` : '📱 *Chat:* Private\n') +
-                        `📄 *Type:* ${msgType}\n` +
-                        `🕒 *Deleted:* ${new Date().toLocaleTimeString('en-US')}\n\n` +
-                        '📌 *Content below ↓*',
-                    contextInfo: {
-                        mentionedJid: [senderJid],
-                        ...STYLE,
-                    },
+                    text: `📝 *Deleted Text:*\n${text}`,
+                    contextInfo: STYLE,
                 });
+            }
 
-                // Relayer le contenu supprimé
+            // Image
+            if (cached.message?.imageMessage) {
                 try {
-                    const relayMessage = {
-                        key: {
-                            remoteJid: botJid,
-                            fromMe: false,
-                            id: crypto.randomBytes(8).toString('hex'),
-                            participant: senderJid,
-                        },
-                        message: cached.message,
-                    };
-
-                    await sock.relayMessage(botJid, relayMessage.message, {
-                        messageId: relayMessage.key.id,
-                    });
-                } catch (relayErr) {
-                    // Fallback : envoyer le texte si le relay échoue
-                    const text = cached.message?.conversation
-                        || cached.message?.extendedTextMessage?.text
-                        || cached.message?.imageMessage?.caption
-                        || cached.message?.videoMessage?.caption
-                        || '';
-
-                    if (text) {
-                        await sock.sendMessage(botJid, {
-                            text: `📝 *Deleted Text:*\n${text}`,
-                            contextInfo: STYLE,
-                        });
+                    const stream = await downloadContentFromMessage(cached.message.imageMessage, 'image');
+                    let buffer = Buffer.from([]);
+                    for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
+                    if (buffer.length > 100) {
+                        await sock.sendMessage(botJid, { image: buffer, caption: '🗑️ *Deleted Image*', contextInfo: STYLE });
                     }
-                }
+                } catch (_) {}
+            }
+
+            // Sticker
+            if (cached.message?.stickerMessage) {
+                try {
+                    const stream = await downloadContentFromMessage(cached.message.stickerMessage, 'sticker');
+                    let buffer = Buffer.from([]);
+                    for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
+                    if (buffer.length > 100) {
+                        await sock.sendMessage(botJid, { sticker: buffer, contextInfo: STYLE });
+                    }
+                } catch (_) {}
             }
         }
 
     } catch (err) {
-        console.error('❌ antidelete event error:', err.message);
+        console.error('❌ antidelete delete error:', err.message);
     }
 }
 
@@ -205,14 +249,10 @@ async function antideleteEvent(sock, update) {
 async function antideleteCommand(sock, msg, args, jid) {
     try {
         const senderJid = msg.key.participant || msg.key.remoteJid;
-        const ownerNumber = process.env.OWNER_NUMBER || '50935729494';
-        const isOwner = senderJid.includes(ownerNumber)
-            || (sock.user?.id && sock.user.id.includes(senderJid.split('@')[0]))
-            || (sock.user?.lid && sock.user.lid.includes(senderJid.split('@')[0]));
 
-        if (!isOwner) {
+        if (!isOwner(sock, senderJid)) {
             return sock.sendMessage(jid, {
-                text: '🚫 *Owner only!*',
+                text: '🚫 *Owner only!*\n\nOnly the bot owner or the bot itself can use this command.',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
@@ -220,33 +260,22 @@ async function antideleteCommand(sock, msg, args, jid) {
         const config = getConfig();
         const subCommand = args[0]?.toLowerCase();
 
-        // STATUS
         if (!subCommand) {
             return sock.sendMessage(jid, {
-                text:
-                    '🗑️ *Anti-Delete*\n\n' +
-                    `📊 *Status:* ${config.enabled ? '✅ ON' : '❌ OFF'}\n\n` +
-                    '📌 *Commands:*\n' +
-                    '.antidelete on\n' +
-                    '.antidelete off',
+                text: `🗑️ *Anti-Delete*\n\n📊 *Status:* ${config.enabled ? '✅ ON' : '❌ OFF'}\n\n📌 .antidelete on | .antidelete off`,
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
 
-        // ON
         if (subCommand === 'on') {
             config.enabled = true;
             saveConfig(config);
             return sock.sendMessage(jid, {
-                text:
-                    '✅ *Anti-Delete Enabled*\n\n' +
-                    '🗑️ Deleted messages will be sent to bot.\n' +
-                    '📄 Supports: text, media, stickers, GIFs, voice notes.',
+                text: '✅ *Anti-Delete Enabled*\n\n🗑️ Deleted messages will be sent to bot chat.',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
 
-        // OFF
         if (subCommand === 'off') {
             config.enabled = false;
             saveConfig(config);
@@ -256,19 +285,20 @@ async function antideleteCommand(sock, msg, args, jid) {
             }, { quoted: msg });
         }
 
-        return sock.sendMessage(jid, {
-            text: '⚠️ Use .antidelete on or .antidelete off',
-            contextInfo: STYLE,
-        }, { quoted: msg });
-
     } catch (err) {
         console.error('❌ antidelete command error:', err.message);
     }
 }
 
+// ═══════════════════════════════════════
+// EXPORTS
+// ═══════════════════════════════════════
+
 module.exports = {
-    event: 'messages.upsert',
-    execute: antideleteEvent,
+    cacheEvent: 'messages.upsert',
+    cacheExecute: cacheMessagesEvent,
+    deleteEvent: 'messages.delete',
+    deleteExecute: handleDeleteEvent,
     name: 'antidelete',
     command: antideleteCommand,
 };

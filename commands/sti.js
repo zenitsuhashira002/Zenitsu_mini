@@ -33,7 +33,7 @@ module.exports = {
                     '✨ *Examples:*\n' +
                     '.sticker 80\n' +
                     '.sticker 60 (reply to image)\n' +
-                    '.sticker  70\n\n' +
+                    '.sticker  70 (caption)\n\n' +
                     '💡 Reply to an image or video to create sticker.',
                 contextInfo: {
                     forwardingScore: 350,

@@ -22,7 +22,7 @@ const NEWSLETTER = {
 
 const WIDTH  = 768;
 const HEIGHT = 768;
-const TIMEOUT_MS = 25000; // 25s max par tentative
+const TIMEOUT_MS = 40000; // 40s max par tentative
 
 const PROVIDERS = [
   {
@@ -126,7 +126,7 @@ async function handleImagine(sock, msg, args, jid) {
     await sock.sendMessage(jid,
       newsletterMsg(
         '❌ *Usage :* `.imagine <description>`\n\n' +
-        '_Exemple :_ `.imagine un samouraï sous la pluie, style anime`\n' +
+        '_Exemple :_ `.imagine Handsome boy with yellow jacket`\n' +
         '_Exemple :_ `.imagine cyberpunk city at night, neon lights`'
       ),
       { quoted: msg }
@@ -193,7 +193,7 @@ async function handleImagine(sock, msg, args, jid) {
   } catch (e) {
     await react(sock, msg, '💤');
     await sock.sendMessage(jid,
-      newsletterMsg(`❌ Erreur d'envoi : ${e.message}`),
+      newsletterMsg(`❌ Error: ${e.message}`),
       { quoted: msg }
     );
   }

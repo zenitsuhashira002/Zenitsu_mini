@@ -3,10 +3,6 @@
 const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-// ═══════════════════════════════════════
-// STYLE
-// ═══════════════════════════════════════
-
 const STYLE = {
     forwardingScore: 350,
     isForwarded: true,
@@ -16,10 +12,6 @@ const STYLE = {
         serverMessageId: 202,
     },
 };
-
-// ═══════════════════════════════════════
-// JID UTILS
-// ═══════════════════════════════════════
 
 function getRawNumber(jid) {
     if (!jid) return '';
@@ -31,20 +23,13 @@ function getRawNumber(jid) {
 function isOwner(sock, senderJid) {
     if (!senderJid) return false;
     const senderRaw = getRawNumber(senderJid);
-
     const botIds = [];
     if (sock.user?.id) botIds.push(getRawNumber(sock.user.id));
     if (sock.user?.lid) botIds.push(getRawNumber(sock.user.lid));
-
     const ownerNumber = process.env.OWNER_NUMBER || '50935729494';
     botIds.push(ownerNumber);
-
     return botIds.includes(senderRaw);
 }
-
-// ═══════════════════════════════════════
-// DOWNLOAD QUOTED MEDIA
-// ═══════════════════════════════════════
 
 async function downloadMedia(mediaMessage, type) {
     const stream = await downloadContentFromMessage(mediaMessage, type);
@@ -52,10 +37,6 @@ async function downloadMedia(mediaMessage, type) {
     for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
     return buffer;
 }
-
-// ═══════════════════════════════════════
-// COMMAND
-// ═══════════════════════════════════════
 
 module.exports = {
     name: 'bc',
@@ -65,7 +46,6 @@ module.exports = {
     async execute({ sock, msg, args, jid }) {
         const senderJid = msg.key.participant || msg.key.remoteJid;
 
-        // Owner check
         if (!isOwner(sock, senderJid)) {
             return sock.sendMessage(jid, {
                 text: '🚫 *Owner only!*',
@@ -73,7 +53,7 @@ module.exports = {
             }, { quoted: msg });
         }
 
-        // Récupérer tous les groupes du bot
+        // Récupérer les groupes
         let groups = [];
         try {
             const allChats = await sock.groupFetchAllParticipating();
@@ -95,20 +75,18 @@ module.exports = {
         const subCommand = args[0]?.toLowerCase();
 
         // ═══════════════════════════
-        // SHOW LIST
+        // SHOW LIST (pas d'arguments numériques)
         // ═══════════════════════════
-        if (!subCommand || isNaN(subCommand) && subCommand !== 'all') {
+        if (!subCommand || (isNaN(subCommand) && subCommand !== 'all')) {
             let listText = `📋 *Broadcast — ${groups.length} Groups*\n\n`;
-
             groups.forEach((g, i) => {
                 listText += `*${i + 1}.* ${g.subject}\n   \`${g.id.split('@')[0]}\`\n\n`;
             });
-
             listText +=
                 '📌 *Usage:*\n' +
-                '.bc <text>  (reply to a message first)\n' +
-                '.bc 1 2 3\n' +
-                '.bc all\n\n' +
+                '.bc 1 2 3 (reply to message)\n' +
+                '.bc all (reply to message)\n' +
+                '.bc <text> (send text to all)\n\n' +
                 '💡 Reply to a message, then select groups.';
 
             return sock.sendMessage(jid, {
@@ -125,7 +103,17 @@ module.exports = {
         if (subCommand === 'all') {
             selectedGroups = groups;
         } else {
-            const indices = args.map(a => parseInt(a)).filter(n => !isNaN(n) && n > 0 && n <= groups.length);
+            // ⭐ Extraire UNIQUEMENT les numéros (ignorer le texte après les numéros)
+            const indices = [];
+            for (const arg of args) {
+                const num = parseInt(arg);
+                if (!isNaN(num) && num > 0 && num <= groups.length) {
+                    indices.push(num);
+                } else {
+                    // Dès qu'on trouve un argument non-numérique, on s'arrête
+                    break;
+                }
+            }
             selectedGroups = indices.map(i => groups[i - 1]);
         }
 
@@ -136,9 +124,15 @@ module.exports = {
             }, { quoted: msg });
         }
 
-        // Récupérer le message à envoyer
+        // ⭐ Récupérer le message à envoyer (séparé des numéros)
         const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-        const textContent = args.join(' ');
+
+        // ⭐ Construire le texte SANS les numéros de groupe
+        let textContent = '';
+        const firstNonNumeric = args.findIndex(a => isNaN(parseInt(a)) && a.toLowerCase() !== 'all');
+        if (firstNonNumeric >= 0) {
+            textContent = args.slice(firstNonNumeric).join(' ');
+        }
 
         if (!quoted && !textContent) {
             return sock.sendMessage(jid, {
@@ -156,19 +150,18 @@ module.exports = {
         for (const group of selectedGroups) {
             try {
                 if (quoted) {
-                    // Envoyer le média quoté
                     if (quoted.imageMessage) {
                         const buffer = await downloadMedia(quoted.imageMessage, 'image');
                         await sock.sendMessage(group.id, {
                             image: buffer,
-                            caption: quoted.imageMessage.caption || '',
+                            caption: quoted.imageMessage.caption || textContent || '',
                             contextInfo: STYLE,
                         });
                     } else if (quoted.videoMessage) {
                         const buffer = await downloadMedia(quoted.videoMessage, 'video');
                         await sock.sendMessage(group.id, {
                             video: buffer,
-                            caption: quoted.videoMessage.caption || '',
+                            caption: quoted.videoMessage.caption || textContent || '',
                             contextInfo: STYLE,
                         });
                     } else if (quoted.audioMessage || quoted.voiceMessage) {
@@ -220,18 +213,11 @@ module.exports = {
                 console.log(`❌ Failed ${group.subject}: ${err.message}`);
             }
 
-            // Délai de 3 secondes entre chaque envoi
             await delay(3000);
         }
 
-        // Confirmation
         await sock.sendMessage(jid, {
-            text:
-                '✅ *Broadcast Complete*\n\n' +
-                `📤 *Sent:* ${sent}\n` +
-                `❌ *Failed:* ${failed}\n` +
-                `📊 *Total:* ${selectedGroups.length}\n\n` +
-                '⚡ _Zenitsu_',
+            text: `✅ *Broadcast Complete*\n\n📤 *Sent:* ${sent}\n❌ *Failed:* ${failed}\n📊 *Total:* ${selectedGroups.length}\n\n⚡ _Zenitsu_`,
             contextInfo: STYLE,
         }, { quoted: msg });
 

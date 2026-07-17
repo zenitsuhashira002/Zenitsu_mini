@@ -64,7 +64,7 @@ const stats = {
 
 // Anti-spam pour les messages de connexion
 const connectionMessageThrottle = new Map();
-const THROTTLE_TIME = 5000; // 3 secondes minimum entre messages de connexion
+const THROTTLE_TIME = 10000; // 10 secondes minimum entre messages de connexion
 
 function shouldSendConnectionMessage(jid) {
   const now = Date.now();
