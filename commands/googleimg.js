@@ -13,12 +13,12 @@ const STYLE = {
 };
 
 // ═══════════════════════════════════════
-// SEARCH APIS
+// IMAGE SEARCH APIS (par ordre de priorité)
 // ═══════════════════════════════════════
 
-const SEARCH_APIS = [
+const IMAGE_APIS = [
     {
-        name: 'PrinceTech Google Image',
+        name: 'PrinceTech',
         url: (q) => `https://api.princetechn.com/api/search/googleimage?apikey=prince&query=${encodeURIComponent(q)}`,
         timeout: 15000,
         extract: (data) => {
@@ -26,16 +26,20 @@ const SEARCH_APIS = [
             if (data?.result && Array.isArray(data.result)) results = data.result;
             else if (data?.data && Array.isArray(data.data)) results = data.data;
             else if (Array.isArray(data)) results = data;
+
             return results
-                .map(item => ({
-                    image: item.image || item.url || item.thumbnail || item.source || '',
-                    title: item.title || '',
-                }))
+                .map(item => {
+                    if (typeof item === 'string') return { image: item, title: '' };
+                    return {
+                        image: item.image || item.url || item.thumbnail || item.source || item.img || item.link || '',
+                        title: item.title || item.name || item.description || '',
+                    };
+                })
                 .filter(item => item.image && item.image.startsWith('http'));
         },
     },
     {
-        name: 'Sylphyy Image Search',
+        name: 'Sylphyy',
         url: (q) => `https://sylphyy.xyz/search/image?q=${encodeURIComponent(q)}`,
         timeout: 15000,
         extract: (data) => {
@@ -43,16 +47,20 @@ const SEARCH_APIS = [
             if (data?.result && Array.isArray(data.result)) results = data.result;
             else if (data?.data && Array.isArray(data.data)) results = data.data;
             else if (Array.isArray(data)) results = data;
+
             return results
-                .map(item => ({
-                    image: item.image || item.url || item.thumbnail || item.source || item.url || '',
-                    title: item.title || item.description || '',
-                }))
+                .map(item => {
+                    if (typeof item === 'string') return { image: item, title: '' };
+                    return {
+                        image: item.image || item.url || item.thumbnail || item.source || item.img || '',
+                        title: item.title || item.name || item.description || '',
+                    };
+                })
                 .filter(item => item.image && item.image.startsWith('http'));
         },
     },
     {
-        name: 'NexRay Image Search',
+        name: 'NexRay',
         url: (q) => `https://api.nexray.eu.cc/search/image?q=${encodeURIComponent(q)}`,
         timeout: 15000,
         extract: (data) => {
@@ -60,16 +68,20 @@ const SEARCH_APIS = [
             if (data?.result && Array.isArray(data.result)) results = data.result;
             else if (data?.data && Array.isArray(data.data)) results = data.data;
             else if (Array.isArray(data)) results = data;
+
             return results
-                .map(item => ({
-                    image: item.image || item.url || item.thumbnail || item.source || '',
-                    title: item.title || item.description || '',
-                }))
+                .map(item => {
+                    if (typeof item === 'string') return { image: item, title: '' };
+                    return {
+                        image: item.image || item.url || item.thumbnail || item.source || item.img || '',
+                        title: item.title || item.name || item.description || '',
+                    };
+                })
                 .filter(item => item.image && item.image.startsWith('http'));
         },
     },
     {
-        name: 'GiftedTech Google Image',
+        name: 'GiftedTech',
         url: (q) => `https://api.giftedtech.co.ke/api/search/googleimage?apikey=gifted&query=${encodeURIComponent(q)}`,
         timeout: 15000,
         extract: (data) => {
@@ -77,11 +89,36 @@ const SEARCH_APIS = [
             if (data?.result && Array.isArray(data.result)) results = data.result;
             else if (data?.data && Array.isArray(data.data)) results = data.data;
             else if (Array.isArray(data)) results = data;
+
             return results
-                .map(item => ({
-                    image: item.image || item.url || item.thumbnail || item.source || (typeof item === 'string' ? item : ''),
-                    title: item.title || '',
-                }))
+                .map(item => {
+                    if (typeof item === 'string') return { image: item, title: '' };
+                    return {
+                        image: item.image || item.url || item.thumbnail || item.source || item.img || item.link || '',
+                        title: item.title || item.name || item.description || '',
+                    };
+                })
+                .filter(item => item.image && item.image.startsWith('http'));
+        },
+    },
+    {
+        name: 'PopCat',
+        url: (q) => `https://api.popcat.xyz/v2/image-search?q=${encodeURIComponent(q)}`,
+        timeout: 15000,
+        extract: (data) => {
+            let results = [];
+            if (data?.result && Array.isArray(data.result)) results = data.result;
+            else if (data?.data && Array.isArray(data.data)) results = data.data;
+            else if (Array.isArray(data)) results = data;
+
+            return results
+                .map(item => {
+                    if (typeof item === 'string') return { image: item, title: '' };
+                    return {
+                        image: item.image || item.url || item.thumbnail || item.source || item.img || '',
+                        title: item.title || item.name || item.description || '',
+                    };
+                })
                 .filter(item => item.image && item.image.startsWith('http'));
         },
     },
@@ -102,15 +139,12 @@ module.exports = {
         if (!query || query.trim().length < 2) {
             return sock.sendMessage(jid, {
                 text:
-                    '🖼️ *Google Image Search*\n\n' +
-                    '⚡ *Usage:*\n' +
-                    '.googleimage <query>\n\n' +
+                    '🖼️ *Image Search*\n\n' +
+                    '⚡ *Usage:* .googleimage <query>\n\n' +
                     '✨ *Examples:*\n' +
                     '.googleimage Cute cats\n' +
-                    '.googleimage Sunset over mountains\n' +
-                    '.googleimage Cyberpunk city\n\n' +
-                    '💡 Returns up to 5 images.\n' +
-                    '🔄 4 search sources',
+                    '.googleimage Sunset mountains\n\n' +
+                    '🔄 5 search sources',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
@@ -118,21 +152,24 @@ module.exports = {
         try { await sock.sendMessage(jid, { react: { text: '🖼️', key: msg.key } }); } catch (_) {}
 
         try {
-            // Chercher avec toutes les APIs
             let allImages = [];
             let usedSource = '';
 
-            for (const api of SEARCH_APIS) {
+            // Essayer chaque API
+            for (const api of IMAGE_APIS) {
                 try {
-                    console.log(`🖼️ Google Image: ${api.name}...`);
+                    console.log(`🖼️ Trying ${api.name}...`);
                     const { data } = await axios.get(api.url(query), { timeout: api.timeout });
-                    const results = api.extract(data);
+                    const images = api.extract(data);
+                    console.log(`   Response sample:`, JSON.stringify(data).slice(0, 200));
 
-                    if (results.length > 0) {
-                        allImages = results;
+                    if (images.length > 0) {
+                        allImages = images;
                         usedSource = api.name;
-                        console.log(`✅ ${api.name}: ${results.length} images`);
+                        console.log(`✅ ${api.name}: ${images.length} images`);
                         break;
+                    } else {
+                        console.log(`⚠️ ${api.name}: 0 images extracted`);
                     }
                 } catch (err) {
                     console.log(`⚠️ ${api.name}: ${err.message}`);
@@ -154,27 +191,17 @@ module.exports = {
 
             console.log(`📌 Sending ${selected.length} images from ${usedSource}...`);
 
-            // Envoyer les images une par une
+            // Envoyer les images une par une avec téléchargement buffer (plus fiable)
             for (let i = 0; i < selected.length; i++) {
                 const item = selected[i];
 
                 await new Promise(r => setTimeout(r, 1200));
 
                 try {
-                    // Essayer l'envoi direct par URL
-                    try {
-                        await sock.sendMessage(jid, {
-                            image: { url: item.image },
-                            caption: `🖼️ *Image ${i + 1}/${selected.length}*\n🔍 ${query}\n${item.title ? `📝 ${item.title.slice(0, 80)}\n` : ''}⚡ _Zenitsu_`,
-                            contextInfo: STYLE,
-                        }, { quoted: i === 0 ? msg : undefined });
-                        continue;
-                    } catch (_) {}
-
-                    // Fallback : télécharger en buffer
+                    // Télécharger l'image en buffer directement (évite les problèmes d'URL)
                     const imgRes = await axios.get(item.image, {
                         responseType: 'arraybuffer',
-                        timeout: 25000,
+                        timeout: 20000,
                         headers: { 'User-Agent': 'Mozilla/5.0' },
                     });
                     const buffer = Buffer.from(imgRes.data);
@@ -185,10 +212,11 @@ module.exports = {
                             caption: `🖼️ *Image ${i + 1}/${selected.length}*\n🔍 ${query}\n⚡ _Zenitsu_`,
                             contextInfo: STYLE,
                         }, { quoted: i === 0 ? msg : undefined });
+                    } else {
+                        console.log(`⚠️ Image ${i + 1} too small: ${buffer.length} bytes`);
                     }
-
                 } catch (err) {
-                    console.log(`⚠️ Image ${i + 1} failed:`, err.message);
+                    console.log(`⚠️ Image ${i + 1} download failed:`, err.message);
                 }
             }
 
