@@ -14,8 +14,8 @@ const activeSearches = new Map();
 
 const SEARCH_APIS = [
     {
-        name: 'GiftedTech',
-        url: (query) => `https://api.giftedtech.co.ke/api/search/spotifysearch?apikey=gifted&query=${encodeURIComponent(query)}`,
+        name: 'nexray',
+        url: (query) => `https://api.nexray.eu.cc/search/spotify?q=${encodeURIComponent(query)}`,
         timeout: 15000,
         extract: (data) => {
             let results = [];
@@ -74,8 +74,8 @@ const SEARCH_APIS = [
         },
     },
     {
-        name: 'YanzBotz',
-        url: (query) => `https://api.yanzbotz.my.id/api/search/spotify?query=${encodeURIComponent(query)}`,
+        name: 'neosoft',
+        url: (query) => `https://api.neosoft.best/api/search/spotify?q=${encodeURIComponent(query)}`,
         timeout: 15000,
         extract: (data) => {
             let results = [];
@@ -101,16 +101,16 @@ const SEARCH_APIS = [
 
 const DOWNLOAD_APIS = [
     {
-        name: 'GiftedTech v4',
-        url: (trackUrl) => `https://api.giftedtech.co.ke/api/download/spotifydlv4?apikey=gifted&url=${encodeURIComponent(trackUrl)}`,
+        name: 'Yupra',
+        url: (trackUrl) => `https://api.yupra.my.id/api/downloader/spotify?url=${encodeURIComponent(trackUrl)}`,
         timeout: 30000,
         extract: (data) => {
             return data?.result?.download_url || data?.result?.url || data?.url || data?.link || data?.download_url || null;
         },
     },
     {
-        name: 'Yupra',
-        url: (trackUrl) => `https://api.yupra.my.id/api/downloader/spotify?url=${encodeURIComponent(trackUrl)}`,
+        name: 'Nexray',
+        url: (trackUrl) => `https://api.nexray.eu.cc/downloader/spotify?url=${encodeURIComponent(trackUrl)}`,
         timeout: 30000,
         extract: (data) => {
             return data?.result?.download_url || data?.result?.url || data?.url || data?.link || data?.download_url || null;
@@ -125,8 +125,8 @@ const DOWNLOAD_APIS = [
         },
     },
     {
-        name: 'Nexor',
-        url: (trackUrl) => `https://api.nexor.my.id/api/download/spotify?url=${encodeURIComponent(trackUrl)}`,
+        name: 'Prince',
+        url: (trackUrl) => `https://api.princetechn.com/api/download/spotifydl?apikey=prince&url=${encodeURIComponent(trackUrl)}`,
         timeout: 30000,
         extract: (data) => {
             return data?.result?.download_url || data?.result?.url || data?.url || data?.link || null;

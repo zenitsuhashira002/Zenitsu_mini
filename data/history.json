@@ -5,5 +5,166 @@
     "event": "disconnected",
     "code": 401,
     "date": "2026-07-17T23:56:03.246Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "pairing_code",
+    "code": "CWEL-Y8MP",
+    "date": "2026-07-23T17:45:07.894Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "disconnected",
+    "code": 515,
+    "date": "2026-07-23T17:45:32.103Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "connected",
+    "browser": "Linux / Chrome / 146.0.7708.124",
+    "date": "2026-07-23T17:45:41.982Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "connected",
+    "browser": "Linux / Opera / 123.0.5678.91",
+    "date": "2026-07-23T18:07:48.804Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "disconnected",
+    "code": 428,
+    "date": "2026-07-23T18:13:00.147Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-07-23T18:17:14.819Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-07-23T18:17:18.913Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-07-23T18:17:26.976Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-07-23T18:19:25.577Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-07-23T18:21:42.729Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "connected",
+    "browser": "Mac / Chrome / 147.0.7727.137",
+    "date": "2026-07-23T18:22:18.053Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "connected",
+    "browser": "Mac / Brave / 1.83.120",
+    "date": "2026-07-23T18:24:13.096Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "connected",
+    "browser": "Linux / Firefox / 142.0.1",
+    "date": "2026-07-23T18:33:54.854Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "connected",
+    "browser": "Mac / Firefox / 143.0",
+    "date": "2026-07-23T18:35:19.455Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "connected",
+    "browser": "Mac / Opera / 123.0.5678.91",
+    "date": "2026-07-23T18:45:48.484Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "connected",
+    "browser": "Windows / Opera / 123.0.5678.91",
+    "date": "2026-07-23T18:57:17.284Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "connected",
+    "browser": "Windows / Opera / 123.0.5678.91",
+    "date": "2026-07-23T19:05:44.797Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "connected",
+    "browser": "Linux / Firefox / 143.0",
+    "date": "2026-07-23T19:13:01.931Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "connected",
+    "browser": "Mac / Chrome / 147.0.7727.137",
+    "date": "2026-07-23T19:25:31.422Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "connected",
+    "browser": "Mac / Firefox / 143.0",
+    "date": "2026-07-23T19:29:14.614Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "connected",
+    "browser": "Linux / Chrome / 146.0.7708.124",
+    "date": "2026-07-23T19:38:24.838Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "connected",
+    "browser": "Mac / Edge / 147.0.3405.102",
+    "date": "2026-07-23T20:01:22.584Z"
+  },
+  {
+    "type": "main",
+    "number": "50935948231",
+    "event": "connected",
+    "browser": "Linux / Opera / 123.0.5678.91",
+    "date": "2026-07-23T20:10:07.786Z"
   }
 ]

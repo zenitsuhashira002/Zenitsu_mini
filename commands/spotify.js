@@ -106,7 +106,7 @@ module.exports = {
 
         try {
             const { data } = await axios.get(
-                `https://api.giftedtech.co.ke/api/search/spotifysearch?apikey=gifted&query=${encodeURIComponent(query)}`,
+                `https://api.yupra.my.id/api/search/spotify?q=${encodeURIComponent(query)}`,
                 { timeout: 30000 }
             );
 
@@ -210,8 +210,8 @@ async function downloadSpotify(sock, msg, jid, trackUrl, title, artist) {
         const encodedUrl = encodeURIComponent(trackUrl);
 
         const { data } = await axios.get(
-            `https://api.giftedtech.co.ke/api/download/spotifydlv4?apikey=gifted&url=${encodedUrl}`,
-            { timeout: 90000 }
+            `https://api.yupra.my.id/api/downloader/spotify?url=${encodedUrl}`,
+            { timeout: 100000 }
         );
 
         let downloadUrl = null;
@@ -237,7 +237,7 @@ async function downloadSpotify(sock, msg, jid, trackUrl, title, artist) {
             audio: buffer,
             mimetype: 'audio/mpeg',
             ptt: false,
-            fileName: `${title.substring(0, 100)}.mp3`,
+            fileName: `${title.substring(0, 100)}_zenitsu.mp3`,
         }, { quoted: msg });
 
         // Send info
@@ -248,6 +248,7 @@ async function downloadSpotify(sock, msg, jid, trackUrl, title, artist) {
                 `🎤 *Artist:* ${artist}\n` +
                 `📦 *Size:* ${sizeMB} MB\n` +
                 `🔗 ${trackUrl}\n\n` +
+                `Quality: ${quality}\n` +
                 `⚡ _Downloaded by Zenitsu_`,
             contextInfo: {
                 forwardingScore: 350,

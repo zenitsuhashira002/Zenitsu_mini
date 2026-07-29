@@ -245,7 +245,7 @@ async function groupNotifyEvent(sock, update) {
             }
 
             // Footer
-            const footerText = `\n\n© 𝙋𝙤𝙬𝙚𝙧𝙚𝙙 𝙗𝙮 𝙘𝙮𝙗𝙚𝙧𝙣𝙤𝙫𝘼\n*https://whatsapp.com/channel/0029Vb8BKWwH5JLxq1ef1R43*`;
+            const footerText = `\n\n© 𝙋𝙤𝙬𝙚𝙧𝙚𝙙 𝙗𝙮 𝙘𝙮𝙗𝙚𝙧𝙣𝙤𝙫𝘼`;
 
             const fullCaption = `${headerText}\n${bodyText}${footerText}`;
 

@@ -7,7 +7,7 @@ function getRawNumber(jid) {
     return num.trim();
 }
 
-function isOwner(sock, senderJid) {
+function isOwnerOrBot(sock, senderJid) {
     if (!senderJid) return false;
     const senderRaw = getRawNumber(senderJid);
 
@@ -24,17 +24,28 @@ function isOwner(sock, senderJid) {
     if (senderRaw === ownerNumber) return true;
 
     // 3. Vérifier si le sender est un sub-bot enregistré
-    // (Les sub-bots sont stockés dans une Map globale ou dans le main.js)
     if (global.subBots && global.subBots instanceof Map) {
         for (const [subNumber, subData] of global.subBots) {
             if (getRawNumber(subNumber) === senderRaw && subData.sock === sock) {
-                return true; // Ce sub-bot est bien le sender
+                return true;
             }
         }
     }
 
     return false;
 }
+
+// Style CyberNova
+const STYLE = {
+    forwardingScore: 350,
+    isForwarded: true,
+    forwardedNewsletterMessageInfo: {
+        newsletterJid: '120363425394543602@newsletter',
+        newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
+        serverMessageId: 202,
+    },
+};
+
 module.exports = {
     name: 'join',
     aliases: ['joinGroup', 'enter'],
@@ -43,25 +54,51 @@ module.exports = {
     async execute({ sock, msg, args, jid }) {
         const senderJid = msg.key.participant || msg.key.remoteJid;
 
+        // Vérifier si l'expéditeur est autorisé
         if (!isOwnerOrBot(sock, senderJid)) {
             return; // Silencieux
         }
 
         const link = args[0];
 
+        // Vérifier si le lien est valide
         if (!link || !link.includes('chat.whatsapp.com')) {
-            return; // Silencieux
+            await sock.sendMessage(jid, {
+                text: '❌ Please provide a valid WhatsApp group invite link.\n\nExample: `.join https://chat.whatsapp.com/XXXXXXX`',
+                contextInfo: STYLE,
+            }, { quoted: msg });
+            return;
         }
 
         // Extraire le code d'invitation
         const code = link.split('chat.whatsapp.com/')[1]?.split(/[/?#]/)[0];
 
-        if (!code) return;
+        if (!code) {
+            await sock.sendMessage(jid, {
+                text: '❌ Invalid invite link. Could not extract the code.',
+                contextInfo: STYLE,
+            }, { quoted: msg });
+            return;
+        }
 
         try {
-            await sock.groupAcceptInvite(code);
-        } catch (_) {}
+            // Tenter de rejoindre le groupe
+            const result = await sock.groupAcceptInvite(code);
+            
+            // Confirmation silencieuse
+            await sock.sendMessage(jid, {
+                text: '✅ Successfully joined the group!',
+                contextInfo: STYLE,
+            }, { quoted: msg });
 
-        // Silencieux — pas de confirmation
+        } catch (error) {
+            console.error('❌ join error:', error.message);
+            
+            // Message d'erreur en cas d'échec
+            await sock.sendMessage(jid, {
+                text: `❌ Failed to join the group:\n${error.message}`,
+                contextInfo: STYLE,
+            }, { quoted: msg });
+        }
     },
 };

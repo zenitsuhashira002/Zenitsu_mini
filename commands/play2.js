@@ -2,12 +2,6 @@
 
 const axios = require('axios');
 
-// ═══════════════════════════════════════
-// CONFIG
-// ═══════════════════════════════════════
-
-const QUALITIES = ['128kbps', '192kbps', '256kbps', '320kbps'];
-const DEFAULT_QUALITY = '128kbps';
 const MAX_DURATION_SECONDS = 600;
 const FALLBACK_THUMB = 'https://iili.io/COzVllj.jpg';
 
@@ -23,10 +17,6 @@ const STYLE = {
     },
 };
 
-// ═══════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════
-
 function parseDuration(str) {
     if (!str) return 0;
     const s = String(str).trim();
@@ -40,10 +30,6 @@ function formatDuration(sec) {
     const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = Math.floor(sec%60);
     return h > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
-
-// ═══════════════════════════════════════
-// SEARCH FALLBACKS
-// ═══════════════════════════════════════
 
 const SEARCH_APIS = [
     {
@@ -65,17 +51,6 @@ const SEARCH_APIS = [
                 title: r.title, url: `https://youtube.com/watch?v=${r.videoId}`,
                 duration: r.duration, durationSeconds: parseDuration(r.duration),
                 views: r.views?.toString() || '', thumbnail: r.thumbnail || '',
-            }));
-        },
-    },
-    {
-        name: 'ZellAPI',
-        fn: async (q) => {
-            const { data } = await axios.get(`https://zellapi.autos/search/youtube?q=${encodeURIComponent(q)}`, { timeout: 15000 });
-            return (data?.result || []).map(r => ({
-                title: r.title, url: `https://youtube.com/watch?v=${r.id}`,
-                duration: r.duration, durationSeconds: parseDuration(r.duration),
-                views: r.views, thumbnail: r.thumbnail || r.image_url || '',
             }));
         },
     },
@@ -104,122 +79,74 @@ const SEARCH_APIS = [
     },
 ];
 
-// ═══════════════════════════════════════
-// DOWNLOAD FALLBACKS
-// ═══════════════════════════════════════
-
 const DOWNLOAD_APIS = [
     {
         name: 'NeoSoft',
         fn: async (url) => {
             const { data } = await axios.get(`https://api.neosoft.best/api/downloader/youtube-play?q=${encodeURIComponent(url)}&type=mp3`, { timeout: 40000 });
-            return {
-                downloadUrl: data?.download || '',
-                title: data?.title || '',
-                artist: data?.artist || '',
-                thumbnail: data?.thumbnail || FALLBACK_THUMB,
-                duration: data?.duration || 0,
-            };
+            return { downloadUrl: data?.download || '', title: data?.title || '', artist: data?.artist || '', thumbnail: data?.thumbnail || FALLBACK_THUMB, duration: data?.duration || 0 };
         },
     },
     {
         name: 'NexRay YTPlay',
         fn: async (url) => {
             const { data } = await axios.get(`https://api.nexray.eu.cc/downloader/ytplay?q=${encodeURIComponent(url)}`, { timeout: 40000 });
-            return {
-                downloadUrl: data?.result?.download_url || '',
-                title: data?.result?.title || '',
-                thumbnail: data?.result?.thumbnail || FALLBACK_THUMB,
-                duration: data?.result?.seconds || 0,
-            };
+            return { downloadUrl: data?.result?.download_url || '', title: data?.result?.title || '', thumbnail: data?.result?.thumbnail || FALLBACK_THUMB };
         },
     },
     {
         name: 'NexRay YTMP3',
         fn: async (url) => {
             const { data } = await axios.get(`https://api.nexray.eu.cc/downloader/ytmp3?url=${encodeURIComponent(url)}`, { timeout: 40000 });
-            return {
-                downloadUrl: data?.result?.download_url || '',
-                title: data?.result?.title || '',
-                thumbnail: data?.result?.thumbnail || FALLBACK_THUMB,
-                duration: data?.result?.seconds || 0,
-            };
+            return { downloadUrl: data?.result?.download_url || '', title: data?.result?.title || '', thumbnail: data?.result?.thumbnail || FALLBACK_THUMB };
         },
     },
     {
         name: 'DavidCyril YTMP3',
         fn: async (url) => {
             const { data } = await axios.get(`https://apis.davidcyriltech.my.id/download/ytmp3?url=${encodeURIComponent(url)}`, { timeout: 40000 });
-            return {
-                downloadUrl: data?.result?.download_url || '',
-                title: data?.result?.title || '',
-                thumbnail: data?.result?.thumbnail || FALLBACK_THUMB,
-            };
+            return { downloadUrl: data?.result?.download_url || '', title: data?.result?.title || '', thumbnail: data?.result?.thumbnail || FALLBACK_THUMB };
         },
     },
     {
         name: 'DavidCyril YTMP3V2',
         fn: async (url) => {
             const { data } = await axios.get(`https://apis.davidcyriltech.my.id/download/ytmp3v2?url=${encodeURIComponent(url)}`, { timeout: 40000 });
-            return {
-                downloadUrl: data?.result?.download_url || data?.download_url || '',
-                title: data?.result?.title || data?.title || '',
-                thumbnail: data?.result?.thumbnail || data?.thumbnail || FALLBACK_THUMB,
-            };
+            return { downloadUrl: data?.result?.download_url || data?.download_url || '', title: data?.result?.title || data?.title || '', thumbnail: data?.result?.thumbnail || data?.thumbnail || FALLBACK_THUMB };
         },
     },
     {
         name: 'Sylphy V2',
         fn: async (url) => {
             const { data } = await axios.get(`https://sylphyy.xyz/download/v2/ytmp3?url=${encodeURIComponent(url)}`, { timeout: 40000 });
-            return {
-                downloadUrl: data?.result?.dl_url || '',
-                title: data?.result?.title || '',
-                thumbnail: FALLBACK_THUMB,
-            };
+            return { downloadUrl: data?.result?.dl_url || '', title: data?.result?.title || '', thumbnail: FALLBACK_THUMB };
         },
     },
     {
         name: 'Aswin Sparky',
         fn: async (url) => {
             const { data } = await axios.get(`https://api-aswin-sparky.koyeb.app/api/downloader/ytv?url=${encodeURIComponent(url)}`, { timeout: 40000 });
-            return {
-                downloadUrl: data?.data?.url || '',
-                title: data?.data?.title || '',
-                thumbnail: FALLBACK_THUMB,
-            };
+            return { downloadUrl: data?.data?.url || '', title: data?.data?.title || '', thumbnail: FALLBACK_THUMB };
         },
     },
     {
         name: 'PrinceTech',
         fn: async (url) => {
             const { data } = await axios.get(`https://api.princetechn.com/api/download/ytmp3?apikey=prince&url=${encodeURIComponent(url)}`, { timeout: 40000 });
-            return {
-                downloadUrl: data?.result?.download_url || data?.result?.url || data?.download_url || data?.url || '',
-                title: data?.result?.title || data?.title || '',
-                thumbnail: data?.result?.thumbnail || FALLBACK_THUMB,
-            };
+            return { downloadUrl: data?.result?.download_url || data?.result?.url || data?.download_url || data?.url || '', title: data?.result?.title || data?.title || '', thumbnail: data?.result?.thumbnail || FALLBACK_THUMB };
         },
     },
     {
         name: 'GiftedTech',
         fn: async (url) => {
             const { data } = await axios.get(`https://api.giftedtech.co.ke/api/download/ytmp3?apikey=gifted&url=${encodeURIComponent(url)}`, { timeout: 40000 });
-            return {
-                downloadUrl: data?.result?.download_url || data?.result?.url || data?.url || data?.link || data?.download_url || '',
-                title: data?.result?.title || data?.title || '',
-                thumbnail: data?.result?.thumbnail || data?.thumbnail || FALLBACK_THUMB,
-            };
+            return { downloadUrl: data?.result?.download_url || data?.result?.url || data?.url || data?.link || data?.download_url || '', title: data?.result?.title || data?.title || '', thumbnail: data?.result?.thumbnail || data?.thumbnail || FALLBACK_THUMB };
         },
     },
 ];
 
-// ═══════════════════════════════════════
-// COMMAND
-// ═══════════════════════════════════════
-
 module.exports = {
-    name: 'play',
+    name: 'play2',
     aliases: ['ytmp3', 'music', 'song', 'youtube', 'yts'],
     category: 'downloader',
 
@@ -232,19 +159,18 @@ module.exports = {
                 text:
                     '🎵 *YouTube Music Downloader*\n\n' +
                     '⚡ *Usage:*\n' +
-                    '.play <song name>\n' +
-                    '.play <number> (to download)\n\n' +
+                    '.play2 <song name>\n' +
+                    '.play2 <number> (to download)\n\n' +
                     '✨ *Examples:*\n' +
-                    '.play Spectre\n' +
-                    '.play Faded Alan Walker\n' +
-                    '.play 1\n\n' +
-                    '🔄 5 search + 9 download sources',
+                    '.play2 Spectre\n' +
+                    '.play2 Faded Alan Walker\n' +
+                    '.play2 1\n\n' +
+                    '🔄 4 search + 9 download sources',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
 
         const numberMatch = input.match(/^(\d+)$/);
-
         if (numberMatch) {
             const selectedIndex = parseInt(numberMatch[1]) - 1;
             const stored = activeSearches.get(senderJid);
@@ -259,7 +185,6 @@ module.exports = {
             return downloadMusic(sock, msg, jid, selected, input);
         }
 
-        // SEARCH
         try { await sock.sendMessage(jid, { react: { text: '🔍', key: msg.key } }); } catch (_) {}
 
         let results = null;
@@ -268,14 +193,8 @@ module.exports = {
         for (const api of SEARCH_APIS) {
             try {
                 results = await api.fn(input);
-                if (results?.length) {
-                    searchSource = api.name;
-                    console.log(`✅ Search: ${api.name} (${results.length})`);
-                    break;
-                }
-            } catch (err) {
-                console.log(`⚠️ Search ${api.name}: ${err.message}`);
-            }
+                if (results?.length) { searchSource = api.name; break; }
+            } catch (err) { console.log(`⚠️ Search ${api.name}: ${err.message}`); }
         }
 
         if (!results?.length) {
@@ -295,37 +214,23 @@ module.exports = {
             if (r.channel) reply += ` | 📺 ${r.channel}`;
             reply += '\n\n';
         });
-        reply += '📌 Reply: .play <number>\n⏳ Expires in 5 min.';
+        reply += '📌 Reply: .play2 <number>\n⏳ Expires in 5 min.';
 
         await sock.sendMessage(jid, { text: reply, contextInfo: STYLE }, { quoted: msg });
         try { await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
 
-        setTimeout(() => {
-            if (activeSearches.get(senderJid)?.timestamp < Date.now() - 300000) activeSearches.delete(senderJid);
-        }, 300000);
+        setTimeout(() => { if (activeSearches.get(senderJid)?.timestamp < Date.now() - 300000) activeSearches.delete(senderJid); }, 300000);
     },
 };
-
-// ═══════════════════════════════════════
-// DOWNLOAD
-// ═══════════════════════════════════════
-
-// ./commands/play.js — Partie à remplacer dans downloadMusic()
 
 async function downloadMusic(sock, msg, jid, track, query) {
     let dlResult = null;
 
     for (const api of DOWNLOAD_APIS) {
         try {
-            console.log(`⬇️ Download: ${api.name}...`);
             dlResult = await api.fn(track.url);
-            if (dlResult?.downloadUrl && dlResult.downloadUrl.startsWith('http')) {
-                console.log(`✅ Download: ${api.name}`);
-                break;
-            }
-        } catch (err) {
-            console.log(`⚠️ Download ${api.name}: ${err.message}`);
-        }
+            if (dlResult?.downloadUrl && dlResult.downloadUrl.startsWith('http')) break;
+        } catch (_) {}
     }
 
     if (!dlResult?.downloadUrl) {
@@ -342,12 +247,11 @@ async function downloadMusic(sock, msg, jid, track, query) {
     const title = dlResult.title || track.title || query;
     const thumb = dlResult.thumbnail || track.thumbnail || FALLBACK_THUMB;
 
-    // ⭐ Envoyer l'audio avec le NOM et l'IMAGE
+    // ⭐ AUDIO SANS STYLE CYBERNOVA — seul externalAdReply pour le nom + image
     await sock.sendMessage(jid, {
         audio: buffer,
         mimetype: 'audio/mpeg',
         ptt: false,
-        fileName: `${title.slice(0, 100)}_zenitsu.mp3`,
         contextInfo: {
             externalAdReply: {
                 title: title,
@@ -357,11 +261,10 @@ async function downloadMusic(sock, msg, jid, track, query) {
                 mediaType: 1,
                 renderLargerThumbnail: true,
             },
-            ...STYLE,
         },
     }, { quoted: msg });
 
-    // Message d'info (optionnel, mais gardé pour les détails)
+    // Message d'info AVEC style CyberNova
     await sock.sendMessage(jid, {
         text:
             '🎵 *Music Downloaded*\n\n' +

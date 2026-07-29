@@ -29,27 +29,11 @@ function saveWelcome(data) {
     }
 }
 
-// 🎲 Liste d'images (support mp4 et jpg)
-const welcomeImages = [
+// 🎲 Liste d'images (support mp4 et jpg)const welcomeImages = [
     'https://files.catbox.moe/jcf2qc.jpg',
     'https://files.catbox.moe/tz07yl.jpg',
     'https://iili.io/BsJvF7R.jpg',
-    'https://d.uguu.se/Kkpvxtht.mp4',
-    'https://o.uguu.se/AlRGXkPp.mp4',
     'https://iili.io/BsJUPjV.jpg',
-    'https://d.uguu.se/NhGBrPFH.jpg',
-    'https://h.uguu.se/JeLSJQgU.jpg',
-    'https://h.uguu.se/KkidxvpM.jpg',
-    'https://d.uguu.se/LlRKOetp.jpg',
-    'https://h.uguu.se/UFLXrYtO.jpg',
-    'https://n.uguu.se/cBjBqDty.jpg',
-    'https://h.uguu.se/UFLXrYtO.jpg',
-    'https://n.uguu.se/gojQfPbO.jpg',
-    'https://h.uguu.se/gYEmTiXe.jpg',
-    'https://h.uguu.se/vuGhrvAv.jpg',
-    'https://n.uguu.se/nCYhoSam.jpg',
-    'https://d.uguu.se/oTpXKPLZ.mp4',
-    'https://d.uguu.se/oTpXKPLZ.mp4',
     'https://iili.io/CE2i0kg.jpg',
     'https://iili.io/BsdTfqJ.jpg',
     'https://iili.io/Bsd7U0u.jpg',
