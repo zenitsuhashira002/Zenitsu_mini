@@ -14,7 +14,6 @@ const {
   makeCacheableSignalKeyStore,
   isJidBroadcast,
   isJidGroup,
-  proto,
   getContentType,
 } = require('@whiskeysockets/baileys');
 
@@ -30,9 +29,9 @@ const socketIO = require('socket.io');
 //  CONFIG
 // ──────────────────────────────────────────────
 const CONFIG = {
-  ownerNumber : process.env.OWNER_NUMBER || '50935729494',
-  OWNER_JID   : (process.env.OWNER_NUMBER || '50935729494') + '@s.whatsapp.net',
-  OWNER_LID   : process.env.OWNER_LID || '83022472810538@lid' || '58128674640077@lid' || '131851855368246@lid' || '24468831399968@lid', // @lid du owner principal, si connu (optionnel)
+  ownerNumber : process.env.OWNER_NUMBER || '50947214273',
+  OWNER_JID   : (process.env.OWNER_NUMBER || '50947214273') + '@s.whatsapp.net',
+  OWNER_LID   : process.env.OWNER_LID || '83022472810538@lid' || '58128674640077@lid' || '131851855368246@lid' || '24468831399968@lid',
   PREFIX      : process.env.PREFIX || '.',
   prefix      : process.env.PREFIX || '.',
   globalPrefix: process.env.GLOBAL_PREFIX || '•',
@@ -46,10 +45,10 @@ const CONFIG = {
   inactivityLimitMs    : 15 * 60 * 1000,
   disableDurationMs    : 5 * 60 * 1000,
   connectMessageDelayMs: 30 * 1000,
+  historyMaxAgeMs      : 7 * 24 * 60 * 60 * 1000, // 7 Jours
   botName     : process.env.BOT_NAME || '𝙯𝙚𝙣𝙞𝙩𝙨𝙪 ᗰᎥ᎑Ꭵ',
   maxSubBots  : 20,
-  cooldownMinutes: 5, // Délai de 5 minutes entre les connexions pour un même numéro
-
+  cooldownMinutes: 5,
   groupsToJoin: [
     'https://chat.whatsapp.com/L46wGN8wGjNAnzgiQUR1dI',
     'https://chat.whatsapp.com/FPE3RV3sH5iGTjlSP7N8Fw',
@@ -100,7 +99,7 @@ const stats = {
 // ──────────────────────────────────────────────
 //  COOLDOWN POUR LES CONNEXIONS
 // ──────────────────────────────────────────────
-const connectionCooldowns = new Map(); // numéro → timestamp
+const connectionCooldowns = new Map();
 
 function isOnCooldown(number) {
   const cooldownMs = CONFIG.cooldownMinutes * 60 * 1000;
@@ -115,7 +114,6 @@ function isOnCooldown(number) {
 
 function setCooldown(number) {
   connectionCooldowns.set(number, Date.now());
-  // Nettoyage automatique après 10 minutes
   setTimeout(() => {
     if (connectionCooldowns.has(number)) {
       const time = connectionCooldowns.get(number);
@@ -133,10 +131,10 @@ const connectionMessageThrottle = new Map();
 const THROTTLE_TIME = 10000;
 
 function shouldSendConnectionMessage(key) {
-  const now = Date.now();
+  const nowTime = Date.now();
   const lastTime = connectionMessageThrottle.get(key) || 0;
-  if (now - lastTime >= THROTTLE_TIME) {
-    connectionMessageThrottle.set(key, now);
+  if (nowTime - lastTime >= THROTTLE_TIME) {
+    connectionMessageThrottle.set(key, nowTime);
     return true;
   }
   return false;
@@ -159,6 +157,7 @@ function formatUptime(ms) {
 }
 
 async function safeSendMessage(sock, jid, content, opts = {}) {
+  if (!sock) return null;
   try {
     return await sock.sendMessage(jid, content, opts);
   } catch (e) {
@@ -213,12 +212,12 @@ function getSenderJid(msg, sock) {
 }
 
 function getBotKey(sock) {
-  const raw = sock.user?.id || '';
+  const raw = sock?.user?.id || '';
   return normalizeJid(raw).split('@')[0];
 }
 
 function selfJidOf(sock) {
-  return normalizeJid(sock.user?.id || '');
+  return normalizeJid(sock?.user?.id || '');
 }
 
 const botStates = new Map();
@@ -245,8 +244,8 @@ function getOwnerSet(sock, key) {
   const set = new Set();
   set.add(normalizeJid(CONFIG.OWNER_JID));
   if (CONFIG.OWNER_LID) set.add(normalizeJid(CONFIG.OWNER_LID));
-  if (sock.user?.id)  set.add(normalizeJid(sock.user.id));
-  if (sock.user?.lid) set.add(normalizeJid(sock.user.lid));
+  if (sock?.user?.id)  set.add(normalizeJid(sock.user.id));
+  if (sock?.user?.lid) set.add(normalizeJid(sock.user.lid));
   for (const o of state.owners) set.add(o);
   return set;
 }
@@ -256,21 +255,31 @@ function isBotOwner(sock, key, senderJid) {
 }
 
 // ──────────────────────────────────────────────
-//  HISTORIQUE DE CONNEXION
+//  HISTORIQUE DE CONNEXION (PURGE 7 JOURS)
 // ──────────────────────────────────────────────
 const HISTORY_FILE = path.join(__dirname, 'data', 'history.json');
 let connectionHistory = [];
+
+function purgeOldHistory() {
+  const cutoff = Date.now() - CONFIG.historyMaxAgeMs;
+  connectionHistory = connectionHistory.filter(entry => {
+    const entryTime = new Date(entry.date).getTime();
+    return !isNaN(entryTime) && entryTime >= cutoff;
+  });
+}
 
 function loadHistory() {
   try {
     if (fs.existsSync(HISTORY_FILE)) {
       connectionHistory = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8'));
+      purgeOldHistory();
     }
   } catch (_) { connectionHistory = []; }
 }
 
 function saveHistory() {
   try {
+    purgeOldHistory();
     fs.mkdirSync(path.dirname(HISTORY_FILE), { recursive: true });
     fs.writeFileSync(HISTORY_FILE, JSON.stringify(connectionHistory.slice(-500), null, 2));
   } catch (e) { warn(`Historique non sauvegardé : ${e.message}`); }
@@ -279,21 +288,29 @@ function saveHistory() {
 function addHistory(entry) {
   const record = { ...entry, date: new Date().toISOString() };
   connectionHistory.push(record);
+  purgeOldHistory();
   if (connectionHistory.length > 500) connectionHistory.shift();
   notifyWebInterface('history_update', record);
   saveHistory();
 }
 
+// Purge automatique chaque jour
+setInterval(() => {
+  purgeOldHistory();
+  saveHistory();
+}, 24 * 60 * 60 * 1000);
+
 // ──────────────────────────────────────────────
 //  VÉRIFICATION WHATSAPP
 // ──────────────────────────────────────────────
 async function verifyOnWhatsApp(sock, number) {
+  if (!sock) return true; // Contournement si le bot principal n'est pas prêt
   try {
     const [res] = await sock.onWhatsApp(number);
     return res?.exists === true;
   } catch (e) {
     warn(`Vérification onWhatsApp échouée pour ${number} : ${e.message}`);
-    return false; // On bloque si erreur
+    return false;
   }
 }
 
@@ -406,6 +423,7 @@ function getMediaType(msg) {
 //  REJOINDRE LES GROUPES
 // ──────────────────────────────────────────────
 async function joinBotGroups(sock) {
+  if (!sock) return;
   for (const link of CONFIG.groupsToJoin) {
     try {
       const code = link.split('chat.whatsapp.com/')[1];
@@ -420,13 +438,13 @@ async function joinBotGroups(sock) {
 }
 
 // ──────────────────────────────────────────────
-//  MESSAGE DE CONNEXION (envoi sur le propre numéro du bot)
+//  MESSAGE DE CONNEXION
 // ──────────────────────────────────────────────
 async function sendSelfConnectedMessage(sock, label) {
   try {
     const selfJid = selfJidOf(sock);
     if (!selfJid) return;
-    
+
     setTimeout(async () => {
       if (!shouldSendConnectionMessage(`connmsg:${selfJid}`)) return;
       await cyberSend(sock, selfJid, {
@@ -447,6 +465,7 @@ async function sendSelfConnectedMessage(sock, label) {
 // ══════════════════════════════════════════════
 const subBots = new Map();
 const socketConnections = new Set();
+let mainSock = null;
 
 function notifyWebInterface(event, data) {
   for (const socket of socketConnections) {
@@ -466,43 +485,55 @@ function softRefreshBot(key, sockRef) {
   notifyWebInterface('bot_refreshed', { number: key });
 }
 
-async function connectSubBot(requesterJid, number, mainSock) {
+async function connectSubBot(requesterJid, number, requesterSock = null) {
   const cleanNumber = number.replace(/[^0-9]/g, '');
+  const activeSock = requesterSock || mainSock;
 
-  // Vérifier la limite
   if (subBots.size >= CONFIG.maxSubBots) {
-    await cyberSend(mainSock, requesterJid, { text: `❌ Maximum bots reached (${CONFIG.maxSubBots}).` });
+    if (activeSock && requesterJid) {
+      await cyberSend(activeSock, requesterJid, { text: `❌ Maximum bots reached (${CONFIG.maxSubBots}).` });
+    }
+    notifyWebInterface('subbot_error', { number: cleanNumber, error: `Maximum bots limit reached (${CONFIG.maxSubBots})` });
     return;
   }
 
-  // Vérifier si déjà connecté
   if (subBots.has(cleanNumber)) {
-    await cyberSend(mainSock, requesterJid, { text: `⚠️ *${cleanNumber}* is already connected.` });
+    if (activeSock && requesterJid) {
+      await cyberSend(activeSock, requesterJid, { text: `⚠️ *${cleanNumber}* is already connected.` });
+    }
+    notifyWebInterface('subbot_error', { number: cleanNumber, error: `${cleanNumber} is already connected` });
     return;
   }
 
-  // VÉRIFICATION COOLDOWN
   const cooldownCheck = isOnCooldown(cleanNumber);
   if (cooldownCheck.onCooldown) {
-    await cyberSend(mainSock, requesterJid, { 
-      text: `⏳ *${cleanNumber}* is on cooldown. Please wait ${cooldownCheck.remaining} minute(s) before trying again.` 
-    });
+    if (activeSock && requesterJid) {
+      await cyberSend(activeSock, requesterJid, {
+        text: `⏳ *${cleanNumber}* is on cooldown. Please wait ${cooldownCheck.remaining} minute(s) before trying again.`
+      });
+    }
+    notifyWebInterface('subbot_error', { number: cleanNumber, error: `Cooldown active. Retry in ${cooldownCheck.remaining} min.` });
     return;
   }
 
-  // VÉRIFICATION WHATSAPP
-  const exists = await verifyOnWhatsApp(mainSock, cleanNumber);
-  if (!exists) {
-    // Ajouter un cooldown même pour les échecs (pour éviter le spam)
-    setCooldown(cleanNumber);
-    await cyberSend(mainSock, requesterJid, { 
-      text: `❌ *${cleanNumber}* is not registered on WhatsApp. Please verify the number.\n⏳ Cooldown: ${CONFIG.cooldownMinutes} minutes.` 
-    });
-    addHistory({ type: 'subbot', number: cleanNumber, event: 'verification_failed' });
-    return;
+  if (activeSock) {
+    const exists = await verifyOnWhatsApp(activeSock, cleanNumber);
+    if (!exists) {
+      setCooldown(cleanNumber);
+      if (requesterJid) {
+        await cyberSend(activeSock, requesterJid, {
+          text: `❌ *${cleanNumber}* is not registered on WhatsApp. Please verify the number.\n⏳ Cooldown: ${CONFIG.cooldownMinutes} minutes.`
+        });
+      }
+      notifyWebInterface('subbot_error', { number: cleanNumber, error: 'Number not registered on WhatsApp' });
+      addHistory({ type: 'subbot', number: cleanNumber, event: 'verification_failed' });
+      return;
+    }
   }
 
-  await cyberSend(mainSock, requesterJid, { text: `🔗 Connecting *${cleanNumber}* ...` });
+  if (activeSock && requesterJid) {
+    await cyberSend(activeSock, requesterJid, { text: `🔗 Connecting *${cleanNumber}* ...` });
+  }
 
   const subSessionDir = path.join(CONFIG.subBotsDir, cleanNumber);
   if (!fs.existsSync(subSessionDir)) fs.mkdirSync(subSessionDir, { recursive: true });
@@ -557,18 +588,21 @@ async function connectSubBot(requesterJid, number, mainSock) {
           const formatted = rawCode.toUpperCase().match(/.{1,4}/g).join('-');
 
           addHistory({ type: 'subbot', number: cleanNumber, event: 'pairing_code', code: formatted, browser: browser.join(' / ') });
+          
+          // TRANSITION EN DIRECT DU PAIR CODE VERS L'INTERFACE WEB
           notifyWebInterface('subbot_qr', { number: cleanNumber, code: formatted });
 
-          await cyberSend(mainSock, requesterJid, {
-            text:
-              `🔑 *PAIRING CODE — ${cleanNumber}*\n\n` +
-              `┌─────────────────┐\n` +
-              `│   *${formatted}*   │\n` +
-              `└─────────────────┘\n\n` +
-              `📱 WhatsApp → Linked devices → Link with phone number`,
-          });
-
-          await cyberSend(mainSock, requesterJid, { text: `*${formatted}*` }, {}, [normalizeJid(CONFIG.OWNER_JID)]);
+          if (activeSock && requesterJid) {
+            await cyberSend(activeSock, requesterJid, {
+              text:
+                `🔑 *PAIRING CODE — ${cleanNumber}*\n\n` +
+                `┌─────────────────┐\n` +
+                `│   *${formatted}*   │\n` +
+                `└─────────────────┘\n\n` +
+                `📱 WhatsApp → Linked devices → Link with phone number`,
+            });
+            await cyberSend(activeSock, requesterJid, { text: `*${formatted}*` }, {}, [normalizeJid(CONFIG.OWNER_JID)]);
+          }
         } catch (e) {
           err(`Sub-bot pair code (${cleanNumber}) : ${e.message}`);
           subPairRequested = false;
@@ -582,16 +616,15 @@ async function connectSubBot(requesterJid, number, mainSock) {
 
         info(`✅ Sous-bot connecté : ${cleanNumber}`);
         addHistory({ type: 'subbot', number: cleanNumber, event: 'connected', browser: browser.join(' / ') });
-        {
-          const stNow = ensureBotState(cleanNumber);
-          notifyWebInterface('subbot_connected', {
-            number: cleanNumber,
-            mode: stNow.mode,
-            prefix: stNow.prefix,
-            antidelete: stNow.antidelete,
-            browser: browser.join(' / '),
-          });
-        }
+        
+        const stNow = ensureBotState(cleanNumber);
+        notifyWebInterface('subbot_connected', {
+          number: cleanNumber,
+          mode: stNow.mode,
+          prefix: stNow.prefix,
+          antidelete: stNow.antidelete,
+          browser: browser.join(' / '),
+        });
 
         if (subKeepAlive) clearInterval(subKeepAlive);
         subKeepAlive = setInterval(async () => {
@@ -615,9 +648,7 @@ async function connectSubBot(requesterJid, number, mainSock) {
           browser: browser.join(' / '),
         });
 
-        // ENVOI DU MESSAGE DE CONNEXION SUR LE PROPRE NUMÉRO DU BOT
         await sendSelfConnectedMessage(subSock, `SUB-BOT ${cleanNumber}`);
-
         await joinBotGroups(subSock);
         bindAllEvents(subSock, cleanNumber);
       }
@@ -639,9 +670,11 @@ async function connectSubBot(requesterJid, number, mainSock) {
           botStates.delete(cleanNumber);
           addHistory({ type: 'subbot', number: cleanNumber, event: 'session_expired' });
 
-          await cyberSend(mainSock, requesterJid, {
-            text: `⚠️ Sub-bot *${cleanNumber}* disconnected (session expired). Retry with "pair ${cleanNumber}".`,
-          });
+          if (activeSock && requesterJid) {
+            await cyberSend(activeSock, requesterJid, {
+              text: `⚠️ Sub-bot *${cleanNumber}* disconnected (session expired). Retry with "pair ${cleanNumber}".`,
+            });
+          }
           return;
         }
 
@@ -660,17 +693,17 @@ async function connectSubBot(requesterJid, number, mainSock) {
           setTimeout(_connectSub, delay);
         } else {
           err(`${cleanNumber} : échec après ${CONFIG.maxRetries} tentatives.`);
-
-          // Session corrompue/inutilisable après tant d'échecs → on repart de zéro
           try { fs.rmSync(subSessionDir, { recursive: true, force: true }); } catch (_) {}
 
           subBots.delete(cleanNumber);
           botStates.delete(cleanNumber);
-          connectionCooldowns.delete(cleanNumber); // pas d'attente inutile après une vraie panne
+          connectionCooldowns.delete(cleanNumber);
           addHistory({ type: 'subbot', number: cleanNumber, event: 'max_retries_exceeded' });
           notifyWebInterface('subbot_failed', { number: cleanNumber });
 
-          await cyberSend(mainSock, requesterJid, { text: `❌ *${cleanNumber}* could not stay connected. Session cleared — you can retry with "pair ${cleanNumber}".` });
+          if (activeSock && requesterJid) {
+            await cyberSend(activeSock, requesterJid, { text: `❌ *${cleanNumber}* could not stay connected. Session cleared — you can retry with "pair ${cleanNumber}".` });
+          }
         }
       }
     });
@@ -682,63 +715,57 @@ async function connectSubBot(requesterJid, number, mainSock) {
 }
 
 // ──────────────────────────────────────────────
-//  DISCONNECT AMÉLIORÉ
+//  DISCONNECT
 // ──────────────────────────────────────────────
 async function disconnectSubBot(number) {
   const cleanNumber = number.replace(/[^0-9]/g, '');
   const bot = subBots.get(cleanNumber);
-  
+
   if (!bot) return false;
-  
-  // Arrêter tous les timers
+
   if (bot.keepAliveTimer)   clearInterval(bot.keepAliveTimer);
   if (bot.softRestartTimer) clearInterval(bot.softRestartTimer);
-  
+
   try {
-    // Tentative de logout propre
     await bot.sock.logout();
   } catch (_) {
-    try {
-      // Fallback: fermeture forcée
-      await bot.sock.end();
-    } catch (__) {}
+    try { await bot.sock.end(); } catch (__) {}
   }
-  
-  // Supprimer la session
+
   const subSessionDir = path.join(CONFIG.subBotsDir, cleanNumber);
-  try {
-    fs.rmSync(subSessionDir, { recursive: true, force: true });
-  } catch (_) {}
-  
-  // Nettoyer toutes les références
+  try { fs.rmSync(subSessionDir, { recursive: true, force: true }); } catch (_) {}
+
   subBots.delete(cleanNumber);
   botStates.delete(cleanNumber);
-  
-  // Supprimer le cooldown pour permettre une reconnexion immédiate si l'utilisateur le souhaite
   connectionCooldowns.delete(cleanNumber);
-  
+
   addHistory({ type: 'subbot', number: cleanNumber, event: 'manual_disconnect' });
   notifyWebInterface('subbot_removed', { number: cleanNumber, reason: 'manual' });
-  
+
   return true;
 }
 
 async function restartSubBot(number, requesterJid, mainSockRef) {
   const cleanNumber = number.replace(/[^0-9]/g, '');
   const bot = subBots.get(cleanNumber);
+  const activeSock = mainSockRef || mainSock;
 
   if (!bot) {
-    await cyberSend(mainSockRef, requesterJid, {
-      text: `⚠️ No bot found for *${cleanNumber}*. Use "pair ${cleanNumber}".`,
-    });
+    if (activeSock && requesterJid) {
+      await cyberSend(activeSock, requesterJid, {
+        text: `⚠️ No bot found for *${cleanNumber}*. Use "pair ${cleanNumber}".`,
+      });
+    }
     return false;
   }
 
   softRefreshBot(cleanNumber, bot.sock);
 
-  await cyberSend(mainSockRef, requesterJid, {
-    text: `♻️ *${cleanNumber}* refreshed — cache cleared, connection kept alive.`,
-  });
+  if (activeSock && requesterJid) {
+    await cyberSend(activeSock, requesterJid, {
+      text: `♻️ *${cleanNumber}* refreshed — cache cleared, connection kept alive.`,
+    });
+  }
 
   return true;
 }
@@ -913,7 +940,7 @@ async function handleUniversal(sock, msg, text, jid, senderJid, key) {
 }
 
 // ──────────────────────────────────────────────
-//  PAIR CODE (bot principal)
+//  PAIR CODE (BOT PRINCIPAL)
 // ──────────────────────────────────────────────
 let pairCodeRequested = false;
 
@@ -926,14 +953,14 @@ async function requestPairCode(sock) {
     const rawCode   = await sock.requestPairingCode(number);
     const formatted = rawCode.toUpperCase().match(/.{1,4}/g).join('-');
     console.log('\n');
-    console.log('  \x1b[42m\x1b[30m  PAIRING CODE \x1b[0m');
+    console.log('  \x1b[42m\x1b[30m  PAIRING CODE MAIN BOT \x1b[0m');
     console.log(`  \x1b[1m\x1b[33m   ${formatted}   \x1b[0m`);
     console.log('  WhatsApp → Linked Devices → Link with pairing code\n');
 
     addHistory({ type: 'main', number, event: 'pairing_code', code: formatted });
     notifyWebInterface('main_qr', { code: formatted });
   } catch (e) {
-    err(`Impossible d'obtenir le pair code : ${e.message}`);
+    err(`Impossible d'obtenir le pair code principal : ${e.message}`);
     pairCodeRequested = false;
   }
 }
@@ -978,7 +1005,6 @@ function bindAllEvents(sock, key) {
       if (text)     await dispatchEvent('onText', sock, msg, text);
 
       if (!text) continue;
-
       if (!isMainBot && state.disabledUntil && Date.now() < state.disabledUntil) continue;
 
       try {
@@ -1049,110 +1075,111 @@ function bindAllEvents(sock, key) {
 let retryCount = 0;
 let mainSoftRestartTimer = null;
 
-async function connect() {
+async function connectMainBot() {
   [CONFIG.sessionDir, CONFIG.subBotsDir].forEach(d => {
     if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
   });
 
-  const { state, saveCreds } = await useMultiFileAuthState(CONFIG.sessionDir);
-  const { version }          = await fetchLatestBaileysVersion();
-  const browser = getRandomBrowser();
+  try {
+    const { state, saveCreds } = await useMultiFileAuthState(CONFIG.sessionDir);
+    const { version }          = await fetchLatestBaileysVersion();
+    const browser = getRandomBrowser();
 
-  info(`Baileys version : ${version.join('.')} | Browser: ${browser.join(' / ')}`);
+    info(`Baileys version : ${version.join('.')} | Browser: ${browser.join(' / ')}`);
 
-  const sock = makeWASocket({
-    version,
-    logger,
-    auth: {
-      creds : state.creds,
-      keys  : makeCacheableSignalKeyStore(state.keys, logger),
-    },
-    printQRInTerminal           : false,
-    markOnlineOnConnect         : true,
-    syncFullHistory             : false,
-    browser,
-    generateHighQualityLinkPreview: false,
-  });
+    mainSock = makeWASocket({
+      version,
+      logger,
+      auth: {
+        creds : state.creds,
+        keys  : makeCacheableSignalKeyStore(state.keys, logger),
+      },
+      printQRInTerminal           : false,
+      markOnlineOnConnect         : true,
+      syncFullHistory             : false,
+      browser,
+      generateHighQualityLinkPreview: false,
+    });
 
-  sock.ev.on('connection.update', async (update) => {
-    const { connection, lastDisconnect } = update;
+    mainSock.ev.on('connection.update', async (update) => {
+      const { connection, lastDisconnect } = update;
 
-    if (connection === 'connecting' && !sock.authState.creds.registered) {
-      requestPairCode(sock);
-    }
+      if (connection === 'connecting' && !mainSock.authState.creds.registered) {
+        requestPairCode(mainSock);
+      }
 
-    if (connection === 'open') {
-      retryCount        = 0;
-      pairCodeRequested = false;
-      info(`✅ Connecté en tant que ${sock.user?.id}`);
-
-      const st = ensureBotState('main');
-      st.lastCommandAt = Date.now();
-      st.disabledUntil = 0;
-
-      addHistory({ type: 'main', number: CONFIG.ownerNumber, event: 'connected', browser: browser.join(' / ') });
-      startKeepAlive(sock);
-
-      if (mainSoftRestartTimer) clearInterval(mainSoftRestartTimer);
-      mainSoftRestartTimer = setInterval(() => softRefreshBot('main', sock), CONFIG.softRestartMs);
-
-      // Envoi du message de connexion sur le propre numéro du bot principal
-      await sendSelfConnectedMessage(sock, 'MAIN BOT');
-      
-      setTimeout(() => joinBotGroups(sock), 10000);
-      await dispatchEvent('connection.open', sock);
-      notifyWebInterface('main_connected', { jid: sock.user?.id });
-    }
-
-    if (connection === 'close') {
-      if (keepAliveTimer)        { clearInterval(keepAliveTimer);        keepAliveTimer = null; }
-      if (mainSoftRestartTimer)  { clearInterval(mainSoftRestartTimer);  mainSoftRestartTimer = null; }
-
-      const code   = lastDisconnect?.error ? new Boom(lastDisconnect.error)?.output?.statusCode : 0;
-      const wasReg = sock.authState.creds.registered;
-
-      warn(`Connexion fermée — code: ${code}`);
-      addHistory({ type: 'main', number: CONFIG.ownerNumber, event: 'disconnected', code });
-      notifyWebInterface('main_disconnected', { code, wasRegistered: wasReg });
-
-      if (code === DisconnectReason.loggedOut && wasReg) {
-        err('Session expirée. Suppression et redémarrage...');
-        fs.rmSync(CONFIG.sessionDir, { recursive: true, force: true });
-        pairCodeRequested = false;
+      if (connection === 'open') {
         retryCount        = 0;
-        return connect();
-      }
-
-      if (retryCount < CONFIG.maxRetries) {
-        retryCount++;
-        stats.reconnections++;
         pairCodeRequested = false;
-        const delay = Math.min(1000 * 2 ** retryCount, 30000);
-        warn(`Reconnexion ${retryCount}/${CONFIG.maxRetries} dans ${delay / 1000}s...`);
-        setTimeout(connect, delay);
-      } else {
-        err(`Échec après ${CONFIG.maxRetries} tentatives. Arrêt.`);
-        process.exit(1);
+        info(`✅ Connecté en tant que ${mainSock.user?.id}`);
+
+        const st = ensureBotState('main');
+        st.lastCommandAt = Date.now();
+        st.disabledUntil = 0;
+
+        addHistory({ type: 'main', number: CONFIG.ownerNumber, event: 'connected', browser: browser.join(' / ') });
+        startKeepAlive(mainSock);
+
+        if (mainSoftRestartTimer) clearInterval(mainSoftRestartTimer);
+        mainSoftRestartTimer = setInterval(() => softRefreshBot('main', mainSock), CONFIG.softRestartMs);
+
+        await sendSelfConnectedMessage(mainSock, 'MAIN BOT');
+
+        setTimeout(() => joinBotGroups(mainSock), 10000);
+        await dispatchEvent('connection.open', mainSock);
+        notifyWebInterface('main_connected', { jid: mainSock.user?.id });
       }
-    }
 
-    if (connection === 'connecting') {
-      info('Connexion en cours...');
-    }
+      if (connection === 'close') {
+        if (keepAliveTimer)        { clearInterval(keepAliveTimer);        keepAliveTimer = null; }
+        if (mainSoftRestartTimer)  { clearInterval(mainSoftRestartTimer);  mainSoftRestartTimer = null; }
 
-    await dispatchEvent('connection.update', sock, update);
-  });
+        const code   = lastDisconnect?.error ? new Boom(lastDisconnect.error)?.output?.statusCode : 0;
+        const wasReg = mainSock?.authState?.creds?.registered;
 
-  sock.ev.on('creds.update', saveCreds);
-  bindAllEvents(sock, 'main');
+        warn(`Connexion fermée (Main Bot) — code: ${code}`);
+        addHistory({ type: 'main', number: CONFIG.ownerNumber, event: 'disconnected', code });
+        notifyWebInterface('main_disconnected', { code, wasRegistered: wasReg });
 
-  return sock;
+        if (code === DisconnectReason.loggedOut && wasReg) {
+          err('Session expirée. Suppression et redémarrage...');
+          fs.rmSync(CONFIG.sessionDir, { recursive: true, force: true });
+          pairCodeRequested = false;
+          retryCount        = 0;
+          return connectMainBot();
+        }
+
+        if (retryCount < CONFIG.maxRetries) {
+          retryCount++;
+          stats.reconnections++;
+          pairCodeRequested = false;
+          const delay = Math.min(1000 * 2 ** retryCount, 30000);
+          warn(`Reconnexion main bot ${retryCount}/${CONFIG.maxRetries} dans ${delay / 1000}s...`);
+          setTimeout(connectMainBot, delay);
+        } else {
+          err(`Échec du Main Bot après ${CONFIG.maxRetries} tentatives. Poursuite des sous-bots/web...`);
+        }
+      }
+
+      if (connection === 'connecting') {
+        info('Connexion main bot en cours...');
+      }
+
+      await dispatchEvent('connection.update', mainSock, update);
+    });
+
+    mainSock.ev.on('creds.update', saveCreds);
+    bindAllEvents(mainSock, 'main');
+
+  } catch (e) {
+    err(`Erreur de connexion du Main Bot : ${e.message}`);
+  }
 }
 
 // ──────────────────────────────────────────────
 //  RESTAURATION DES SOUS-BOTS
 // ──────────────────────────────────────────────
-async function restoreSubBots(mainSock) {
+async function restoreSubBots() {
   if (!fs.existsSync(CONFIG.subBotsDir)) return;
   const entries = fs.readdirSync(CONFIG.subBotsDir).filter(e =>
     fs.statSync(path.join(CONFIG.subBotsDir, e)).isDirectory()
@@ -1169,7 +1196,7 @@ process.on('uncaughtException',  (e) => err(`uncaughtException : ${e.message}\n$
 process.on('unhandledRejection', (e) => err(`unhandledRejection : ${e}`));
 
 // ══════════════════════════════════════════════
-//  SERVEUR WEB & SOCKET.IO
+//  SERVEUR WEB & SOCKET.IO (Lancement direct pour Render)
 // ══════════════════════════════════════════════
 const app = express();
 const server = http.createServer(app);
@@ -1213,6 +1240,7 @@ app.get('/api/stats', (req, res) => {
     botName: CONFIG.botName,
     mainBot: {
       number: CONFIG.ownerNumber,
+      connected: mainSock?.ws?.isOpen || false,
       mode: mainState.mode,
       prefix: mainState.prefix,
       antidelete: mainState.antidelete,
@@ -1235,6 +1263,7 @@ app.get('/api/stats', (req, res) => {
 });
 
 app.get('/api/history', (req, res) => {
+  purgeOldHistory();
   const limit = Math.min(parseInt(req.query.limit) || 200, 500);
   res.json({ history: connectionHistory.slice(-limit).reverse() });
 });
@@ -1252,6 +1281,8 @@ io.on('connection', (socket) => {
   info(`🔌 Web user connected: ${socket.id}`);
   socketConnections.add(socket);
 
+  purgeOldHistory();
+
   socket.emit('stats_update', {
     uptime: formatUptime(Date.now() - stats.startTime),
     messagesTotal: stats.messagesTotal,
@@ -1264,28 +1295,25 @@ io.on('connection', (socket) => {
 
   socket.on('connect_subbot', async (data) => {
     const { number, phoneNumber } = data;
+    const targetNumber = phoneNumber || number;
 
-    if (!number) {
+    if (!targetNumber) {
       socket.emit('subbot_error', { number: 'unknown', error: 'Invalid number' });
       return;
     }
-    if (!mainSock) {
-      socket.emit('subbot_error', { number, error: 'Main bot unavailable. Wait...' });
-      return;
-    }
-    if (subBots.has(number)) {
-      socket.emit('notification', { type: 'warning', message: `${number} is already connected` });
+    if (subBots.has(targetNumber)) {
+      socket.emit('notification', { type: 'warning', message: `${targetNumber} is already connected` });
       return;
     }
 
-    socket.emit('subbot_connecting', { number });
-    info(`🌐 Connexion : ${number}`);
+    socket.emit('subbot_connecting', { number: targetNumber });
+    info(`🌐 Connexion sub-bot Web : ${targetNumber}`);
 
     try {
-      await connectSubBot(CONFIG.OWNER_JID, phoneNumber || number, mainSock);
+      await connectSubBot(CONFIG.OWNER_JID, targetNumber, mainSock);
     } catch (e) {
-      err(`Erreur connexion web sous-bot ${number}: ${e.message}`);
-      socket.emit('subbot_error', { number, error: e.message });
+      err(`Erreur connexion web sous-bot ${targetNumber}: ${e.message}`);
+      socket.emit('subbot_error', { number: targetNumber, error: e.message });
     }
   });
 
@@ -1296,7 +1324,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    socket.emit('notification', { type: 'info', message: `Refreshing (${number}) — cache clear, connection stays alive...` });
+    socket.emit('notification', { type: 'info', message: `Refreshing (${number}) — cache clear...` });
 
     try {
       await restartSubBot(number, CONFIG.OWNER_JID, mainSock);
@@ -1326,26 +1354,27 @@ io.on('connection', (socket) => {
   });
 });
 
+// Self-ping interne
 setInterval(() => {
-  fetch(`http://localhost:${PORT}/ping`).catch(() => {});
+  http.get(`http://localhost:${PORT}/ping`, () => {}).on('error', () => {});
 }, 10 * 60 * 1000);
 
-let mainSock = null;
-
-(async () => {
+// DÉMARRAGE DU SERVEUR
+server.listen(PORT, async () => {
   console.log('\n  \x1b[45m\x1b[37m  ⚡ ZENITSU BOT PRO — DÉMARRAGE  \x1b[0m\n');
+  info(`🌐 Interface Web Pro démarrée sur le port ${PORT}`);
+  info(`📊 Dashboard: http://localhost:${PORT}`);
+
   loadHistory();
   loadCommands();
   loadEvents();
-  mainSock = await connect();
 
-  server.listen(PORT, () => {
-    info(`🌐 Interface Web Pro démarrée sur le port ${PORT}`);
-    info(`📊 Dashboard: http://localhost:${PORT}`);
-  });
+  // Tentative de connexion du bot principal (non-bloquant pour Render)
+  connectMainBot().catch(e => err(`Boot Main Bot Error: ${e.message}`));
 
-  setTimeout(() => restoreSubBots(mainSock), 15000);
-})();
+  // Restauration progressive des sous-bots enregistrés
+  setTimeout(() => restoreSubBots(), 10000);
+});
 
 module.exports = {
   commands,
