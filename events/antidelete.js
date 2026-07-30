@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
+const { isOwner, getRawNumber } = require('../utils/owner');
 
 // ═══════════════════════════════════════
 // CONFIG
@@ -39,48 +40,9 @@ const STYLE = {
 };
 
 // ═══════════════════════════════════════
-// JID UTILS
+// Récupération du JID du bot
 // ═══════════════════════════════════════
 
-function getRawNumber(jid) {
-    if (!jid) return '';
-    let num = jid.split('@')[0];
-    num = num.split(':')[0];
-    return num.trim();
-}
-
-/**
- * Vérifie si le sender est le propriétaire, le bot principal, ou un sub-bot
- */
-function isOwner(sock, senderJid) {
-    if (!senderJid) return false;
-    const senderRaw = getRawNumber(senderJid);
-
-    // 1. Le bot lui-même (principal)
-    const botIds = [];
-    if (sock.user?.id) botIds.push(getRawNumber(sock.user.id));
-    if (sock.user?.lid) botIds.push(getRawNumber(sock.user.lid));
-
-    // Si le sender est CE bot → OK
-    if (botIds.includes(senderRaw)) return true;
-
-    // 2. L'owner configuré
-    const ownerNumber = process.env.OWNER_NUMBER || '50935729494';
-    if (senderRaw === ownerNumber) return true;
-
-    // 3. Vérifier les sub-bots enregistrés globalement
-    if (global.subBots && global.subBots instanceof Map) {
-        for (const [subNumber] of global.subBots) {
-            if (getRawNumber(subNumber) === senderRaw) return true;
-        }
-    }
-
-    return false;
-}
-
-/**
- * Récupère le JID du bot actuel pour envoyer les alertes
- */
 function getBotJid(sock) {
     if (sock.user?.id) return sock.user.id.split(':')[0];
     if (sock.user?.lid) return `${sock.user.lid.split('@')[0]}@s.whatsapp.net`;
@@ -162,7 +124,7 @@ async function handleDeleteEvent(sock, update) {
         const config = getConfig();
         if (!config.enabled) return;
 
-        // ⭐ Récupérer le JID de CE bot pour envoyer les alertes
+        // Récupérer le JID de CE bot pour envoyer les alertes
         const botJid = getBotJid(sock);
         if (!botJid) return;
 
@@ -183,7 +145,7 @@ async function handleDeleteEvent(sock, update) {
             const isGroup = chatJid?.endsWith('@g.us');
             const msgType = getMessageType(cached.message);
 
-            // ⭐ Envoyer l'alerte vers CE BOT (pas vers l'owner)
+            // Envoyer l'alerte vers CE BOT (pas vers l'owner)
             await sock.sendMessage(botJid, {
                 text:
                     '🗑️ *Anti-Delete Alert*\n\n' +
@@ -257,7 +219,7 @@ async function antideleteCommand(sock, msg, args, jid) {
     try {
         const senderJid = msg.key.participant || msg.key.remoteJid;
 
-        // ⭐ Vérification owner CORRIGÉE pour sub-bots
+        // Vérification owner avec la fonction centralisée
         if (!isOwner(sock, senderJid)) {
             return; // Silencieux
         }

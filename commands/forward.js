@@ -1,10 +1,7 @@
 // ./commands/forward.js
 
 const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
-
-// ═══════════════════════════════════════
-// STYLE
-// ═══════════════════════════════════════
+const { isOwner, getRawNumber } = require('../utils/owner');
 
 const STYLE = {
     forwardingScore: 350,
@@ -16,52 +13,11 @@ const STYLE = {
     },
 };
 
-// ═══════════════════════════════════════
-// JID UTILS
-// ═══════════════════════════════════════
-function getRawNumber(jid) {
-    if (!jid) return '';
-    let num = jid.split('@')[0];
-    num = num.split(':')[0];
-    return num.trim();
-}
-
-function isOwner(sock, senderJid) {
-    if (!senderJid) return false;
-    const senderRaw = getRawNumber(senderJid);
-
-    // 1. Vérifier si le sender est le bot LUI-MÊME (sub-bot ou principal)
-    const botIds = [];
-    if (sock.user?.id) botIds.push(getRawNumber(sock.user.id));
-    if (sock.user?.lid) botIds.push(getRawNumber(sock.user.lid));
-
-    // Si le sender est le bot lui-même → OK
-    if (botIds.includes(senderRaw)) return true;
-
-    // 2. Vérifier si le sender est l'owner configuré
-    const ownerNumber = process.env.OWNER_NUMBER || '50935729494';
-    if (senderRaw === ownerNumber) return true;
-
-    // 3. Vérifier si le sender est un sub-bot enregistré
-    // (Les sub-bots sont stockés dans une Map globale ou dans le main.js)
-    if (global.subBots && global.subBots instanceof Map) {
-        for (const [subNumber, subData] of global.subBots) {
-            if (getRawNumber(subNumber) === senderRaw && subData.sock === sock) {
-                return true; // Ce sub-bot est bien le sender
-            }
-        }
-    }
-
-    return false;
-}
-
 function cleanJid(target) {
     let cleaned = target.trim();
 
-    // Si c'est déjà un JID complet (@s.whatsapp.net, @g.us, @newsletter)
     if (cleaned.includes('@')) return cleaned;
 
-    // Si c'est un lien WhatsApp
     if (cleaned.includes('chat.whatsapp.com/')) {
         const code = cleaned.split('chat.whatsapp.com/')[1]?.split(/[?#]/)[0];
         if (code) return `${code}@g.us`;
@@ -77,16 +33,11 @@ function cleanJid(target) {
         if (num) return `${num}@s.whatsapp.net`;
     }
 
-    // Numéro simple
     const num = cleaned.replace(/[^0-9]/g, '');
     if (num.length >= 7) return `${num}@s.whatsapp.net`;
 
     return null;
 }
-
-// ═══════════════════════════════════════
-// DOWNLOAD MEDIA
-// ═══════════════════════════════════════
 
 async function downloadMedia(mediaMessage, type) {
     const stream = await downloadContentFromMessage(mediaMessage, type);
@@ -94,10 +45,6 @@ async function downloadMedia(mediaMessage, type) {
     for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
     return buffer;
 }
-
-// ═══════════════════════════════════════
-// COMMAND
-// ═══════════════════════════════════════
 
 module.exports = {
     name: 'forward',
@@ -150,13 +97,11 @@ module.exports = {
             }, { quoted: msg });
         }
 
-        // Reaction
         try { await sock.sendMessage(jid, { react: { text: '📤', key: msg.key } }); } catch (_) {}
 
         try {
             let sent = false;
 
-            // Image
             if (quoted.imageMessage) {
                 const buffer = await downloadMedia(quoted.imageMessage, 'image');
                 await sock.sendMessage(targetJid, {
@@ -165,9 +110,7 @@ module.exports = {
                     contextInfo: STYLE,
                 });
                 sent = true;
-            }
-            // Video
-            else if (quoted.videoMessage) {
+            } else if (quoted.videoMessage) {
                 const buffer = await downloadMedia(quoted.videoMessage, 'video');
                 await sock.sendMessage(targetJid, {
                     video: buffer,
@@ -175,9 +118,7 @@ module.exports = {
                     contextInfo: STYLE,
                 });
                 sent = true;
-            }
-            // Audio / Voice
-            else if (quoted.audioMessage || quoted.voiceMessage) {
+            } else if (quoted.audioMessage || quoted.voiceMessage) {
                 const audioMsg = quoted.audioMessage || quoted.voiceMessage;
                 const buffer = await downloadMedia(audioMsg, 'audio');
                 await sock.sendMessage(targetJid, {
@@ -187,18 +128,14 @@ module.exports = {
                     contextInfo: STYLE,
                 });
                 sent = true;
-            }
-            // Sticker
-            else if (quoted.stickerMessage) {
+            } else if (quoted.stickerMessage) {
                 const buffer = await downloadMedia(quoted.stickerMessage, 'sticker');
                 await sock.sendMessage(targetJid, {
                     sticker: buffer,
                     contextInfo: STYLE,
                 });
                 sent = true;
-            }
-            // Document
-            else if (quoted.documentMessage) {
+            } else if (quoted.documentMessage) {
                 const buffer = await downloadMedia(quoted.documentMessage, 'document');
                 await sock.sendMessage(targetJid, {
                     document: buffer,
@@ -207,9 +144,7 @@ module.exports = {
                     contextInfo: STYLE,
                 });
                 sent = true;
-            }
-            // Text
-            else if (quoted.conversation || quoted.extendedTextMessage?.text) {
+            } else if (quoted.conversation || quoted.extendedTextMessage?.text) {
                 const txt = quoted.conversation || quoted.extendedTextMessage?.text || '';
                 await sock.sendMessage(targetJid, {
                     text: txt,

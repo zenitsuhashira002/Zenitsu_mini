@@ -1,6 +1,7 @@
-// ./commands/bc.js — Version corrigée
+// ./commands/bc.js
 
 const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
+const { isOwner, getRawNumber } = require('../utils/owner');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const STYLE = {
@@ -12,36 +13,6 @@ const STYLE = {
         serverMessageId: 202,
     },
 };
-
-function getRawNumber(jid) {
-    if (!jid) return '';
-    let num = jid.split('@')[0];
-    num = num.split(':')[0];
-    return num.trim();
-}
-
-function isOwner(sock, senderJid) {
-    if (!senderJid) return false;
-    const senderRaw = getRawNumber(senderJid);
-
-    // Bot lui-même (principal ou sub-bot)
-    const botIds = [];
-    if (sock.user?.id) botIds.push(getRawNumber(sock.user.id));
-    if (sock.user?.lid) botIds.push(getRawNumber(sock.user.lid));
-    if (botIds.includes(senderRaw)) return true;
-
-    // Owner configuré
-    if (senderRaw === (process.env.OWNER_NUMBER || '50935729494')) return true;
-
-    // Sub-bots enregistrés
-    if (global.subBots && global.subBots instanceof Map) {
-        for (const [subNumber] of global.subBots) {
-            if (getRawNumber(subNumber) === senderRaw) return true;
-        }
-    }
-
-    return false;
-}
 
 async function downloadMedia(mediaMessage, type) {
     const stream = await downloadContentFromMessage(mediaMessage, type);
@@ -58,12 +29,11 @@ module.exports = {
     async execute({ sock, msg, args, jid }) {
         const senderJid = msg.key.participant || msg.key.remoteJid;
 
-        // ⭐ Vérification owner CORRIGÉE
         if (!isOwner(sock, senderJid)) {
             return; // Silencieux
         }
 
-        // Récupérer les groupes de CE BOT (pas du owner)
+        // Récupérer les groupes de CE BOT
         let groups = [];
         try {
             const allChats = await sock.groupFetchAllParticipating();
@@ -76,12 +46,9 @@ module.exports = {
             return sock.sendMessage(jid, { text: '❌ Bot is not in any group.', contextInfo: STYLE }, { quoted: msg });
         }
 
-        // ... (le reste du code est inchangé)
         const subCommand = args[0]?.toLowerCase();
 
-        // ═══════════════════════════
-        // SHOW LIST (pas d'arguments numériques)
-        // ═══════════════════════════
+        // SHOW LIST
         if (!subCommand || (isNaN(subCommand) && subCommand !== 'all')) {
             let listText = `📋 *Broadcast — ${groups.length} Groups*\n\n`;
             groups.forEach((g, i) => {
@@ -100,22 +67,18 @@ module.exports = {
             }, { quoted: msg });
         }
 
-        // ═══════════════════════════
         // SELECT GROUPS
-        // ═══════════════════════════
         let selectedGroups = [];
 
         if (subCommand === 'all') {
             selectedGroups = groups;
         } else {
-            // ⭐ Extraire UNIQUEMENT les numéros (ignorer le texte après les numéros)
             const indices = [];
             for (const arg of args) {
                 const num = parseInt(arg);
                 if (!isNaN(num) && num > 0 && num <= groups.length) {
                     indices.push(num);
                 } else {
-                    // Dès qu'on trouve un argument non-numérique, on s'arrête
                     break;
                 }
             }
@@ -129,10 +92,8 @@ module.exports = {
             }, { quoted: msg });
         }
 
-        // ⭐ Récupérer le message à envoyer (séparé des numéros)
         const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
 
-        // ⭐ Construire le texte SANS les numéros de groupe
         let textContent = '';
         const firstNonNumeric = args.findIndex(a => isNaN(parseInt(a)) && a.toLowerCase() !== 'all');
         if (firstNonNumeric >= 0) {
@@ -146,7 +107,6 @@ module.exports = {
             }, { quoted: msg });
         }
 
-        // Reaction
         try { await sock.sendMessage(jid, { react: { text: '📤', key: msg.key } }); } catch (_) {}
 
         let sent = 0;

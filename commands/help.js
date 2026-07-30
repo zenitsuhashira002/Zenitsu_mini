@@ -10,25 +10,7 @@ const path = require('path');
 
 const HELP_FILE = path.join(__dirname, 'help.txt');
 
-const DEFAULT_HELP = `You are a helpful assistant for the Zenitsu Mini WhatsApp Bot.
-
-About the bot:
-- Name: Zenitsu Mini
-- Owner: Zenitsu Hashira (50935729494)
-- Channel: CyberNova (https://whatsapp.com/channel/0029Vb8BKWwH5JLxq1ef1R43)
-- Prefix: .
-- Description: Advanced WhatsApp Multi-Device Bot with 60+ commands for downloading, AI, search, tools, and group management.
-
-Your job:
-- Help users understand how to use the bot
-- Explain what commands are available
-- Guide users to the right command for their needs
-- Be friendly and use ⚡ emoji
-- Keep responses concise and helpful
-
-If someone asks about a specific command, explain what it does and how to use it.
-If someone asks about the owner or channel, provide the information above.
-If someone asks what the bot can do, list the main categories: Downloader, AI, Search, Tools, Group Management.`;
+const DEFAULT_PROMPT = 'You are a helpful assistant for the Zenitsu Mini WhatsApp Bot. Help users with bot commands and features.';
 
 const STYLE = {
     forwardingScore: 350,
@@ -41,22 +23,126 @@ const STYLE = {
 };
 
 // ═══════════════════════════════════════
-// LECTURE DU FICHIER HELP
+// LECTURE DU PROMPT
 // ═══════════════════════════════════════
 
-function loadHelpPrompt() {
+function loadPrompt() {
     try {
         if (fs.existsSync(HELP_FILE)) {
-            const content = fs.readFileSync(HELP_FILE, 'utf8');
-            return content.trim() || DEFAULT_HELP;
+            const content = fs.readFileSync(HELP_FILE, 'utf8').trim();
+            return content || DEFAULT_PROMPT;
         }
-        // Créer le fichier par défaut s'il n'existe pas
-        fs.writeFileSync(HELP_FILE, DEFAULT_HELP, 'utf8');
-        return DEFAULT_HELP;
+        fs.writeFileSync(HELP_FILE, DEFAULT_PROMPT, 'utf8');
+        return DEFAULT_PROMPT;
     } catch (err) {
         console.error('❌ Error loading help.txt:', err.message);
-        return DEFAULT_HELP;
+        return DEFAULT_PROMPT;
     }
+}
+
+// ═══════════════════════════════════════
+// AI FALLBACKS
+// ═══════════════════════════════════════
+
+const AI_APIS = [
+    {
+        name: 'PrinceTech Chat',
+        fn: async (query, system) => {
+            const fullQuery = `${system}\n\nUser question: ${query}`;
+            const { data } = await axios.get(
+                `https://api.princetechn.com/api/ai/chat?apikey=prince&q=${encodeURIComponent(fullQuery)}`,
+                { timeout: 45000 }
+            );
+            return data?.result || data?.reply || data?.response || '';
+        },
+    },
+    {
+        name: 'PrinceTech GPT-4',
+        fn: async (query, system) => {
+            const fullQuery = `${system}\n\nUser question: ${query}`;
+            const { data } = await axios.get(
+                `https://api.princetechn.com/api/ai/gpt4?apikey=prince&q=${encodeURIComponent(fullQuery)}`,
+                { timeout: 45000 }
+            );
+            return data?.result || data?.reply || data?.response || '';
+        },
+    },
+    {
+        name: 'PrinceTech DeepSeek',
+        fn: async (query, system) => {
+            const fullQuery = `${system}\n\nUser question: ${query}`;
+            const { data } = await axios.get(
+                `https://api.princetechn.com/api/ai/deepseek-llm?apikey=prince&q=${encodeURIComponent(fullQuery)}`,
+                { timeout: 45000 }
+            );
+            return data?.result || data?.reply || data?.response || '';
+        },
+    },
+    {
+        name: 'NexRay Claude',
+        fn: async (query, system) => {
+            const fullQuery = `${system}\n\nUser question: ${query}`;
+            const { data } = await axios.get(
+                `https://api.nexray.eu.cc/ai/claude?text=${encodeURIComponent(fullQuery)}`,
+                { timeout: 45000 }
+            );
+            return data?.result || data?.reply || data?.response || data?.text || '';
+        },
+    },
+    {
+        name: 'NexRay GPT-3.5',
+        fn: async (query, system) => {
+            const fullQuery = `${system}\n\nUser question: ${query}`;
+            const { data } = await axios.get(
+                `https://api.nexray.eu.cc/ai/gpt-3.5-turbo?text=${encodeURIComponent(fullQuery)}`,
+                { timeout: 45000 }
+            );
+            return data?.result || data?.reply || data?.response || data?.text || '';
+        },
+    },
+    {
+        name: 'NeoSoft Perplexity',
+        fn: async (query, system) => {
+            const fullQuery = `${system}\n\nUser question: ${query}`;
+            const { data } = await axios.get(
+                `https://api.neosoft.best/api/ai/perplexity?text=${encodeURIComponent(fullQuery)}`,
+                { timeout: 45000 }
+            );
+            return data?.result || data?.reply || data?.response || data?.text || '';
+        },
+    },
+];
+
+// ═══════════════════════════════════════
+// FALLBACK LOCAL
+// ═══════════════════════════════════════
+
+function getLocalResponse(query) {
+    const q = query.toLowerCase();
+
+    if (q.includes('owner') || q.includes('who made') || q.includes('creator')) {
+        return '👑 Zenitsu Mini is owned by **Zenitsu Hashira** (+50935729494). Powered by CyberNova Team.';
+    }
+    if (q.includes('channel') || q.includes('newsletter')) {
+        return '📢 Join our channel **CyberNova**: https://whatsapp.com/channel/0029Vb8BKWwH5JLxq1ef1R43';
+    }
+    if (q.includes('command') || q.includes('feature') || q.includes('what can')) {
+        return '⚡ Zenitsu Mini has 60+ commands: Downloader, AI, Search, Tools, Group Management, Owner. Type .menu to see all!';
+    }
+    if (q.includes('sticker') || q.includes('take')) {
+        return '🎨 Reply to an image/video with **.sticker** to create. Use **.take a:Name** for author only.';
+    }
+    if (q.includes('music') || q.includes('song') || q.includes('download')) {
+        return '🎵 Use **.play <song>** for YouTube or **.spotify <song>** for Spotify.';
+    }
+    if (q.includes('prefix')) {
+        return '🔰 The prefix is **.** (dot). Example: .menu';
+    }
+    if (q.includes('menu') || q.includes('all command')) {
+        return '📋 Type **.menu** to see all available commands.';
+    }
+
+    return '';
 }
 
 // ═══════════════════════════════════════
@@ -80,74 +166,62 @@ module.exports = {
                     '✨ *Examples:*\n' +
                     '.help How do I download music?\n' +
                     '.help What commands are available?\n' +
-                    '.help Who is the owner?\n' +
-                    '.help How to create a sticker?\n\n' +
-                    '💡 I can help you with:\n' +
-                    '• Bot features & commands\n' +
-                    '• How to use specific commands\n' +
-                    '• Owner & channel info\n' +
-                    '• Troubleshooting\n\n' +
-                    '⚡ _Zenitsu Help Assistant_',
+                    '.help Who is the owner?\n\n' +
+                    '💡 I can help with bot features, commands, and info.\n\n' +
+                    '⚡ _Zenitsu Help_',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
 
         try { await sock.sendMessage(jid, { react: { text: '💬', key: msg.key } }); } catch (_) {}
 
-        try {
-            const helpPrompt = loadHelpPrompt();
-            const encodedQuery = encodeURIComponent(query);
-            const encodedSystem = encodeURIComponent(helpPrompt);
-
-            // DavidCyril API
-            const { data } = await axios.get(
-                `https://apis.davidcyriltech.my.id/ai/writecream?text=${encodedQuery}&system=${encodedSystem}`,
-                { timeout: 45000 }
-            );
-
-            const reply = data?.response || '';
-
-            if (!reply || reply.trim().length < 2) throw new Error('Empty response');
-
-            const caption =
-                '💬 *Help Assistant*\n\n' +
-                `❓ *Q:* ${query.length > 200 ? query.slice(0, 200) + '...' : query}\n\n` +
-                `💡 *A:* ${reply}\n\n` +
-                '⚡ _Zenitsu Help_';
-
-            await sock.sendMessage(jid, {
-                text: caption,
-                contextInfo: STYLE,
-            }, { quoted: msg });
-
-            try { await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
-
-        } catch (err) {
-            console.error('❌ help error:', err.message);
-            try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
-
-            // Fallback : réponses pré-définies
-            const lowerQuery = query.toLowerCase();
-            let fallbackReply = '';
-
-            if (lowerQuery.includes('owner') || lowerQuery.includes('who made') || lowerQuery.includes('creator')) {
-                fallbackReply = '👑 The owner of Zenitsu Mini is **Zenitsu Hashira** (50935729494).\n\n📢 Join our channel: https://whatsapp.com/channel/0029Vb8BKWwH5JLxq1ef1R43';
-            } else if (lowerQuery.includes('channel') || lowerQuery.includes('newsletter')) {
-                fallbackReply = '📢 Our channel is **CyberNova**: https://whatsapp.com/channel/0029Vb8BKWwH5JLxq1ef1R43\n\n⚡ Stay updated with the latest features!';
-            } else if (lowerQuery.includes('command') || lowerQuery.includes('feature') || lowerQuery.includes('what can')) {
-                fallbackReply = '⚡ Zenitsu Mini has 60+ commands in these categories:\n\n📥 **Downloader** — YouTube, Spotify, TikTok, Instagram, Facebook, Pinterest\n🧠 **AI** — GPT, Gemini, DeepSeek, Venice\n🔍 **Search** — Google, Lyrics, Shazam, Wikipedia, Anime\n🛠️ **Tools** — Stickers, QR, Translate, Weather, Calculator\n👥 **Group** — Anti-Link, Welcome, Kick, Poll\n\n💡 Type .menu to see all commands!';
-            } else if (lowerQuery.includes('sticker') || lowerQuery.includes('take')) {
-                fallbackReply = '🎨 To create a sticker, reply to an image/video with **.sticker**\n\nTo rename a sticker pack, reply with **.take a:AuthorName** (author only) or **.take p:PackName** (pack only).';
-            } else if (lowerQuery.includes('music') || lowerQuery.includes('song') || lowerQuery.includes('download')) {
-                fallbackReply = '🎵 To download music, use **.play <song name>** for YouTube or **.spotify <song name>** for Spotify.\n\nFor videos, use **.aio <url>** or **.dl <url>**.';
-            } else {
-                fallbackReply = '⚡ I couldn\'t process your question right now. Please try again or type **.menu** to see all available commands.\n\n📢 Join our channel: https://whatsapp.com/channel/0029Vb8BKWwH5JLxq1ef1R43';
-            }
-
-            await sock.sendMessage(jid, {
-                text: `💬 *Help Assistant*\n\n${fallbackReply}\n\n⚡ _Zenitsu Help_`,
+        // Vérifier d'abord les réponses locales
+        const localReply = getLocalResponse(query);
+        if (localReply) {
+            return sock.sendMessage(jid, {
+                text: `💬 *Help Assistant*\n\n${localReply}\n\n⚡ _Zenitsu Help_`,
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
+
+        // Essayer les APIs AI
+        const helpPrompt = loadPrompt();
+        let reply = '';
+
+        for (const api of AI_APIS) {
+            try {
+                console.log(`💬 Help AI: ${api.name}...`);
+                reply = await api.fn(query, helpPrompt);
+                if (reply && reply.trim().length > 5) {
+                    console.log(`✅ ${api.name}`);
+                    break;
+                }
+            } catch (err) {
+                console.log(`⚠️ ${api.name}: ${err.message}`);
+            }
+        }
+
+        if (!reply) {
+            return sock.sendMessage(jid, {
+                text:
+                    '💬 *Help Assistant*\n\n' +
+                    '⚡ I couldn\'t process your question right now.\n' +
+                    'Type **.menu** to see all commands, or try again.\n\n' +
+                    '📢 Channel: https://whatsapp.com/channel/0029Vb8BKWwH5JLxq1ef1R43\n\n' +
+                    '⚡ _Zenitsu Help_',
+                contextInfo: STYLE,
+            }, { quoted: msg });
+        }
+
+        await sock.sendMessage(jid, {
+            text:
+                '💬 *Help Assistant*\n\n' +
+                `❓ *Q:* ${query.length > 200 ? query.slice(0, 200) + '...' : query}\n\n` +
+                `💡 *A:* ${reply}\n\n` +
+                '⚡ _Zenitsu Help_',
+            contextInfo: STYLE,
+        }, { quoted: msg });
+
+        try { await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
     },
 };

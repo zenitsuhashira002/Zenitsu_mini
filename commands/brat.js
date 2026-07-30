@@ -110,7 +110,7 @@ _©CybernovA_`;
             // =========================
             // 🎬 GENERATE VIDEO
             // =========================
-            const apiUrl = `https://api.yupra.my.id/api/video/bratv?text=${encodeURIComponent(userText)}`;
+            const apiUrl = `https://zellapi.autos/tools/bratanimate?q=${encodeURIComponent(userText)}`;
             
             const videoResponse = await axios.get(apiUrl, {
                 responseType: 'arraybuffer',

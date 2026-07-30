@@ -1,450 +1,154 @@
 [
   {
     "type": "main",
-    "number": "50935948231",
-    "event": "pairing_code",
-    "code": "CWEL-Y8MP",
-    "date": "2026-07-23T17:45:07.894Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
-    "event": "disconnected",
-    "code": 515,
-    "date": "2026-07-23T17:45:32.103Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
-    "event": "connected",
-    "browser": "Linux / Chrome / 146.0.7708.124",
-    "date": "2026-07-23T17:45:41.982Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
-    "event": "connected",
-    "browser": "Linux / Opera / 123.0.5678.91",
-    "date": "2026-07-23T18:07:48.804Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
-    "event": "disconnected",
-    "code": 428,
-    "date": "2026-07-23T18:13:00.147Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-23T18:17:14.819Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-23T18:17:18.913Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-23T18:17:26.976Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-23T18:19:25.577Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-23T18:21:42.729Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
+    "number": "584265508074",
     "event": "connected",
     "browser": "Mac / Chrome / 147.0.7727.137",
-    "date": "2026-07-23T18:22:18.053Z"
+    "date": "2026-07-30T20:46:08.951Z"
   },
   {
     "type": "main",
-    "number": "50935948231",
-    "event": "connected",
-    "browser": "Mac / Brave / 1.83.120",
-    "date": "2026-07-23T18:24:13.096Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
-    "event": "connected",
-    "browser": "Linux / Firefox / 142.0.1",
-    "date": "2026-07-23T18:33:54.854Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
-    "event": "connected",
-    "browser": "Mac / Firefox / 143.0",
-    "date": "2026-07-23T18:35:19.455Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
-    "event": "connected",
-    "browser": "Mac / Opera / 123.0.5678.91",
-    "date": "2026-07-23T18:45:48.484Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
-    "event": "connected",
-    "browser": "Windows / Opera / 123.0.5678.91",
-    "date": "2026-07-23T18:57:17.284Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
-    "event": "connected",
-    "browser": "Windows / Opera / 123.0.5678.91",
-    "date": "2026-07-23T19:05:44.797Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
+    "number": "584265508074",
     "event": "connected",
     "browser": "Linux / Firefox / 143.0",
-    "date": "2026-07-23T19:13:01.931Z"
+    "date": "2026-07-30T21:04:20.347Z"
   },
   {
     "type": "main",
-    "number": "50935948231",
-    "event": "connected",
-    "browser": "Mac / Chrome / 147.0.7727.137",
-    "date": "2026-07-23T19:25:31.422Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
-    "event": "connected",
-    "browser": "Mac / Firefox / 143.0",
-    "date": "2026-07-23T19:29:14.614Z"
-  },
-  {
-    "type": "main",
-    "number": "50935948231",
+    "number": "584265508074",
     "event": "connected",
     "browser": "Linux / Chrome / 146.0.7708.124",
-    "date": "2026-07-23T19:38:24.838Z"
+    "date": "2026-07-30T21:17:31.327Z"
   },
   {
     "type": "main",
-    "number": "50935948231",
+    "number": "584265508074",
     "event": "connected",
-    "browser": "Mac / Edge / 147.0.3405.102",
-    "date": "2026-07-23T20:01:22.584Z"
+    "browser": "Mac / Chrome / 147.0.7727.137",
+    "date": "2026-07-30T21:22:29.642Z"
   },
   {
     "type": "main",
-    "number": "50935948231",
+    "number": "584265508074",
     "event": "connected",
-    "browser": "Linux / Opera / 123.0.5678.91",
-    "date": "2026-07-23T20:10:07.786Z"
+    "browser": "Mac / Opera / 123.0.5678.91",
+    "date": "2026-07-30T21:29:15.004Z"
   },
   {
     "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 401,
-    "date": "2026-07-29T17:02:13.004Z"
+    "number": "584265508074",
+    "event": "connected",
+    "browser": "Mac / Vivaldi / 7.6.3799.48",
+    "date": "2026-07-30T21:31:18.402Z"
   },
   {
-    "type": "main",
+    "type": "subbot",
     "number": "50935729494",
     "event": "pairing_code",
-    "code": "SNBE-25CE",
-    "date": "2026-07-29T17:02:45.231Z"
+    "code": "FWRN-3RS9",
+    "browser": "Linux / Edge / 147.0.3405.102",
+    "date": "2026-07-30T21:52:16.303Z"
   },
   {
-    "type": "main",
+    "type": "subbot",
     "number": "50935729494",
     "event": "disconnected",
     "code": 515,
-    "date": "2026-07-29T17:02:59.754Z"
+    "date": "2026-07-30T21:53:32.707Z"
+  },
+  {
+    "type": "subbot",
+    "number": "50935729494",
+    "event": "soft_refresh",
+    "date": "2026-07-30T21:54:12.712Z"
+  },
+  {
+    "type": "subbot",
+    "number": "50935729494",
+    "event": "connected",
+    "browser": "Mac / Chrome / 147.0.7727.137",
+    "date": "2026-07-30T21:54:12.823Z"
+  },
+  {
+    "type": "subbot",
+    "number": "50935729494",
+    "event": "soft_refresh",
+    "date": "2026-07-30T21:55:09.500Z"
+  },
+  {
+    "type": "subbot",
+    "number": "50935729494",
+    "event": "soft_refresh",
+    "date": "2026-07-30T21:56:29.132Z"
+  },
+  {
+    "type": "subbot",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-07-30T21:57:07.262Z"
+  },
+  {
+    "type": "subbot",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-07-30T21:57:12.459Z"
   },
   {
     "type": "main",
+    "number": "584265508074",
+    "event": "disconnected",
+    "code": 428,
+    "date": "2026-07-30T21:57:12.507Z"
+  },
+  {
+    "type": "main",
+    "number": "584265508074",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-07-30T21:57:14.673Z"
+  },
+  {
+    "type": "subbot",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-07-30T21:57:16.524Z"
+  },
+  {
+    "type": "main",
+    "number": "584265508074",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-07-30T21:57:18.778Z"
+  },
+  {
+    "type": "subbot",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-07-30T21:57:24.596Z"
+  },
+  {
+    "type": "main",
+    "number": "584265508074",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-07-30T21:57:26.826Z"
+  },
+  {
+    "type": "subbot",
     "number": "50935729494",
     "event": "connected",
     "browser": "Linux / Firefox / 142.0.1",
-    "date": "2026-07-29T17:03:24.167Z"
+    "date": "2026-07-30T21:57:44.167Z"
   },
   {
     "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 401,
-    "date": "2026-07-29T17:04:04.386Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "pairing_code",
-    "code": "BGDY-1EG3",
-    "date": "2026-07-29T17:04:40.216Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 515,
-    "date": "2026-07-29T17:05:09.020Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "connected",
-    "browser": "Linux / Chrome / 147.0.7727.137",
-    "date": "2026-07-29T17:05:43.031Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "connected",
-    "browser": "Mac / Chrome / 147.0.7727.137",
-    "date": "2026-07-29T17:15:22.214Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "connected",
-    "browser": "Linux / Opera / 123.0.5678.91",
-    "date": "2026-07-29T18:54:39.547Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "connected",
-    "browser": "Mac / Edge / 147.0.3405.102",
-    "date": "2026-07-29T18:58:32.599Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 428,
-    "date": "2026-07-29T19:16:33.700Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "connected",
-    "browser": "Linux / Opera / 123.0.5678.91",
-    "date": "2026-07-29T19:16:37.697Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 428,
-    "date": "2026-07-29T19:29:04.758Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "connected",
-    "browser": "Mac / Vivaldi / 7.6.3799.48",
-    "date": "2026-07-29T19:29:10.049Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 428,
-    "date": "2026-07-29T19:34:58.459Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "connected",
-    "browser": "Windows / Brave / 1.83.120",
-    "date": "2026-07-29T19:35:06.127Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T19:36:21.471Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T19:36:54.179Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T19:40:28.218Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T19:43:43.555Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T19:46:22.229Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T19:48:00.230Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T19:48:30.324Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T19:50:54.429Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T19:53:11.383Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T19:57:06.040Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T20:00:32.443Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T20:03:36.022Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T20:06:50.039Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T20:09:46.087Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T20:13:45.021Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T20:15:11.144Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T20:17:03.319Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T20:18:16.393Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T20:18:46.793Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T20:20:34.098Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "disconnected",
-    "code": 408,
-    "date": "2026-07-29T20:22:00.116Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "connected",
-    "browser": "Linux / Chrome / 147.0.7727.137",
-    "date": "2026-07-30T04:37:05.043Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
+    "number": "584265508074",
     "event": "connected",
     "browser": "Linux / Chrome / 146.0.7708.124",
-    "date": "2026-07-30T05:28:12.322Z"
-  },
-  {
-    "type": "main",
-    "number": "50935729494",
-    "event": "connected",
-    "browser": "Linux / Chromium / 147.0.7727.137",
-    "date": "2026-07-30T05:28:57.342Z"
+    "date": "2026-07-30T21:57:48.997Z"
   }
 ]

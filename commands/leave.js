@@ -1,40 +1,6 @@
 // ./commands/leave.js
 
-function getRawNumber(jid) {
-    if (!jid) return '';
-    let num = jid.split('@')[0];
-    num = num.split(':')[0];
-    return num.trim();
-}
-
-function isOwnerOrBot(sock, senderJid) {
-    if (!senderJid) return false;
-    const senderRaw = getRawNumber(senderJid);
-
-    // 1. Vérifier si le sender est le bot LUI-MÊME (sub-bot ou principal)
-    const botIds = [];
-    if (sock.user?.id) botIds.push(getRawNumber(sock.user.id));
-    if (sock.user?.lid) botIds.push(getRawNumber(sock.user.lid));
-
-    // Si le sender est le bot lui-même → OK
-    if (botIds.includes(senderRaw)) return true;
-
-    // 2. Vérifier si le sender est l'owner configuré
-    const ownerNumber = process.env.OWNER_NUMBER || '50935729494';
-    if (senderRaw === ownerNumber) return true;
-
-    // 3. Vérifier si le sender est un sub-bot enregistré
-    // (Les sub-bots sont stockés dans une Map globale ou dans le main.js)
-    if (global.subBots && global.subBots instanceof Map) {
-        for (const [subNumber, subData] of global.subBots) {
-            if (getRawNumber(subNumber) === senderRaw && subData.sock === sock) {
-                return true; // Ce sub-bot est bien le sender
-            }
-        }
-    }
-
-    return false;
-}
+const { isOwner } = require('../utils/owner');
 
 const STYLE = {
     forwardingScore: 350,
@@ -56,7 +22,7 @@ module.exports = {
         const isGroup = jid.endsWith('@g.us');
 
         // Vérifier si l'expéditeur est autorisé
-        if (!isOwnerOrBot(sock, senderJid)) {
+        if (!isOwner(sock, senderJid)) {
             return; // Silencieux
         }
 
@@ -76,7 +42,6 @@ module.exports = {
         // ═══════════════════
 
         if (subCommand !== 'force') {
-            // Avertissement dans le groupe
             await sock.sendMessage(jid, {
                 text:
                     '⚠️ *Leave Warning*\n\n' +
@@ -86,11 +51,9 @@ module.exports = {
                 contextInfo: STYLE,
             }, { quoted: msg });
 
-            // Stocker la demande en attente
             if (!global._pendingLeave) global._pendingLeave = new Map();
             global._pendingLeave.set(jid, Date.now() + 30000);
 
-            // Auto-clean
             setTimeout(() => {
                 if (global._pendingLeave?.get(jid) < Date.now()) {
                     global._pendingLeave.delete(jid);
@@ -103,7 +66,6 @@ module.exports = {
         // "force" → EXÉCUTER
         // ═══════════════════
 
-        // Vérifier si la demande est encore valide (si en groupe)
         const pending = global._pendingLeave?.get(jid);
         if (!pending || Date.now() > pending) {
             return sock.sendMessage(jid, {
@@ -114,7 +76,6 @@ module.exports = {
         global._pendingLeave.delete(jid);
 
         try {
-            // Récupérer les membres avant de quitter (pour le groupe)
             let metadata;
             try {
                 metadata = await sock.groupMetadata(jid);
@@ -124,7 +85,6 @@ module.exports = {
                 const allMembers = metadata.participants.map(p => p.id);
                 const groupName = metadata.subject || 'Group';
 
-                // Message d'abandon avec mention de tous les membres
                 await sock.sendMessage(jid, {
                     text:
                         '👋 *Goodbye!*\n\n' +
@@ -138,7 +98,6 @@ module.exports = {
                 });
             }
 
-            // Quitter le groupe
             await sock.groupLeave(jid);
 
         } catch (err) {

@@ -174,3 +174,34 @@ YOUR BEHAVIOR AS HELP ASSISTANT
 - If someone thanks you: "⚡ You're welcome! Happy to help."
 - Always mention the channel link when relevant
 - If you don't know something: "I'm not sure about that. Try .menu to explore available commands!"
+Here is the last update of the menu:
+ai.js          get.js           pin.js          store.js
+aio.js         getjid.js        ping.js         supreme.js
+alert.js       getpp.js         ping2.js        tag.js
+anime.js       getppgc.js       pinterest.js    tag2.js
+antidelete.js  goodbye.js       play.js         tag3.js
+antilink.js    googleimg.js     play2.js        tagall.js
+antilink2.js   group-notify.js  play3.js        take.js
+apk.js         group.js         qrcode.js       temp
+approve.js     help.js          react.js        tgsticker.js
+autostatus.js  help.txt         readqr.js       tiksearch.js
+bc.js          ig.js            remini2.js      tiktok.js
+blur.js        imagine.js       s.js            toimg.js
+book.js        img.js           save.js         tomp3.js
+bookdl.js      instagram.js     search.js       topdf.js
+brat.js        join.js          shazam.js       translate.js
+car.js         kickall.js       shazam2.js      tts.js
+caution.js     leave.js         ship.js         tweet.js
+claude.js      link.js          song.js         type.js
+decode.js      logo.js          song2.js        upload.js
+deepseek.js    lyrics.js        song3.js        vv.js
+del.js         manga.js         sora.js         vv2.js
+delete.js      mangadl.js       spotify.js      wanted.js
+dl.js          mangadl2.js      spotify2.js     weather.js
+encode.js      mangadl3.js      spotify3.js     welcome.js
+facebook.js    menu.js          ssweb.js        wiki.js
+fancy.js       menu2.js         status.js       ytmp3.js
+fancy2.js      menu3.js         sti.js          zenitsu.js
+forward.js     number.js        sticker.js
+gemini.js      ocr.js           stickget.js
+generate.js    owner.js         sticksearch.js

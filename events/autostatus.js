@@ -2,13 +2,13 @@
 
 const fs = require('fs');
 const path = require('path');
+const { isOwner } = require('../utils/owner');
 
 // ═══════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════
 
 const CONFIG_FILE = path.join(process.cwd(), 'database', 'autostatus.json');
-
 const dbDir = path.join(process.cwd(), 'database');
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 if (!fs.existsSync(CONFIG_FILE)) {
@@ -17,10 +17,6 @@ if (!fs.existsSync(CONFIG_FILE)) {
         updatedAt: new Date().toISOString(),
     }, null, 2));
 }
-
-// ═══════════════════════════════════════
-// DATABASE
-// ═══════════════════════════════════════
 
 function getConfig() {
     try { return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); }
@@ -49,31 +45,6 @@ const STYLE = {
         serverMessageId: 202,
     },
 };
-
-// ═══════════════════════════════════════
-// JID UTILS
-// ═══════════════════════════════════════
-
-function getRawNumber(jid) {
-    if (!jid) return '';
-    let num = jid.split('@')[0];
-    num = num.split(':')[0];
-    return num.trim();
-}
-
-function isOwner(sock, senderJid) {
-    if (!senderJid) return false;
-    const senderRaw = getRawNumber(senderJid);
-    const botIds = [];
-
-    if (sock.user?.id) botIds.push(getRawNumber(sock.user.id));
-    if (sock.user?.lid) botIds.push(getRawNumber(sock.user.lid));
-
-    const ownerNumber = process.env.OWNER_NUMBER || '50935729494';
-    botIds.push(ownerNumber);
-
-    return botIds.includes(senderRaw);
-}
 
 // ═══════════════════════════════════════
 // ANTI-SPAM
@@ -107,7 +78,7 @@ async function autostatusEvent(sock, update) {
 
                 if (viewedStatuses.has(cacheKey)) continue;
 
-                // ⭐ Délai de 5 secondes avant de lire le statut
+                // Délai de 5 secondes avant de lire le statut
                 await new Promise(r => setTimeout(r, 5000));
 
                 // Lire le statut (vue uniquement)
@@ -136,11 +107,9 @@ async function autostatusCommand(sock, msg, args, jid) {
     try {
         const senderJid = msg.key.participant || msg.key.remoteJid;
 
+        // Utiliser la fonction isOwner centralisée
         if (!isOwner(sock, senderJid)) {
-            return sock.sendMessage(jid, {
-                text: '🚫 *Owner only!*',
-                contextInfo: STYLE,
-            }, { quoted: msg });
+            return; // Silencieux
         }
 
         const config = getConfig();

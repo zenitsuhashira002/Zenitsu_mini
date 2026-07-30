@@ -3,10 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
-
-// ═══════════════════════════════════════
-// CONFIG
-// ═══════════════════════════════════════
+const { isOwner, getRawNumber } = require('../utils/owner');
 
 const STORE_DIR = path.join(process.cwd(), 'database', 'store');
 if (!fs.existsSync(STORE_DIR)) fs.mkdirSync(STORE_DIR, { recursive: true });
@@ -20,49 +17,6 @@ const STYLE = {
         serverMessageId: 202,
     },
 };
-
-// ═══════════════════════════════════════
-// JID UTILS
-// ═══════════════════════════════════════
-
-function getRawNumber(jid) {
-    if (!jid) return '';
-    let num = jid.split('@')[0];
-    num = num.split(':')[0];
-    return num.trim();
-}
-
-function isOwner(sock, senderJid) {
-    if (!senderJid) return false;
-    const senderRaw = getRawNumber(senderJid);
-
-    // 1. Vérifier si le sender est le bot LUI-MÊME (sub-bot ou principal)
-    const botIds = [];
-    if (sock.user?.id) botIds.push(getRawNumber(sock.user.id));
-    if (sock.user?.lid) botIds.push(getRawNumber(sock.user.lid));
-
-    // Si le sender est le bot lui-même → OK
-    if (botIds.includes(senderRaw)) return true;
-
-    // 2. Vérifier si le sender est l'owner configuré
-    const ownerNumber = process.env.OWNER_NUMBER || '50935729494';
-    if (senderRaw === ownerNumber) return true;
-
-    // 3. Vérifier si le sender est un sub-bot enregistré
-    // (Les sub-bots sont stockés dans une Map globale ou dans le main.js)
-    if (global.subBots && global.subBots instanceof Map) {
-        for (const [subNumber, subData] of global.subBots) {
-            if (getRawNumber(subNumber) === senderRaw && subData.sock === sock) {
-                return true; // Ce sub-bot est bien le sender
-            }
-        }
-    }
-
-    return false;
-}
-// ═══════════════════════════════════════
-// HELPERS
-// ═══════════════════════════════════════
 
 function getStorePath(folderName) {
     const safeName = folderName.replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
@@ -116,10 +70,6 @@ function getMediaType(quoted) {
     return null;
 }
 
-// ═══════════════════════════════════════
-// COMMAND
-// ═══════════════════════════════════════
-
 module.exports = {
     name: 'store',
     aliases: ['storage', 'save', 'getitem', 'deleteitem', 'liststore'],
@@ -134,10 +84,7 @@ module.exports = {
 
         const subCommand = args[0]?.toLowerCase();
 
-        // ═══════════════════════════════
-        // LIST — Afficher tous les dossiers
-        // ═══════════════════════════════
-
+        // LIST
         if (!subCommand || subCommand === 'list') {
             const folders = listFolders();
 
@@ -167,10 +114,7 @@ module.exports = {
             return sock.sendMessage(jid, { text, contextInfo: STYLE }, { quoted: msg });
         }
 
-        // ═══════════════════════════════
-        // SAVE — Sauvegarder un élément
-        // ═══════════════════════════════
-
+        // SAVE
         if (subCommand === 'save' || subCommand === 'add') {
             const folderName = args[1];
 
@@ -243,10 +187,7 @@ module.exports = {
             }
         }
 
-        // ═══════════════════════════════
-        // GET — Récupérer un élément ou lister un dossier
-        // ═══════════════════════════════
-
+        // GET
         else if (subCommand === 'get' || subCommand === 'show') {
             const folderName = args[1];
 
@@ -274,7 +215,6 @@ module.exports = {
                 const buffer = fs.readFileSync(filePath);
                 const ext = itemName.split('.').pop()?.toLowerCase();
 
-                // Détecter le type et envoyer
                 if (['jpg', 'jpeg', 'png', 'webp'].includes(ext) && !itemName.startsWith('sticker_')) {
                     await sock.sendMessage(jid, { image: buffer, caption: `📦 ${folderName}/${itemName}`, contextInfo: STYLE }, { quoted: msg });
                 } else if (ext === 'webp' || itemName.startsWith('sticker_')) {
@@ -306,10 +246,7 @@ module.exports = {
             await sock.sendMessage(jid, { text, contextInfo: STYLE }, { quoted: msg });
         }
 
-        // ═══════════════════════════════
-        // DELETE — Supprimer un dossier ou un item
-        // ═══════════════════════════════
-
+        // DELETE
         else if (subCommand === 'delete' || subCommand === 'remove' || subCommand === 'del') {
             const folderName = args[1];
 
@@ -329,7 +266,6 @@ module.exports = {
                 }, { quoted: msg });
             }
 
-            // Supprimer un item spécifique
             const itemName = args[2];
             if (itemName) {
                 const filePath = path.join(folderPath, itemName);
@@ -347,7 +283,6 @@ module.exports = {
                 }, { quoted: msg });
             }
 
-            // Supprimer tout le dossier
             fs.rmSync(folderPath, { recursive: true, force: true });
             return sock.sendMessage(jid, {
                 text: `✅ Folder "${folderName}" deleted.`,
@@ -355,10 +290,7 @@ module.exports = {
             }, { quoted: msg });
         }
 
-        // ═══════════════════════════════
         // UNKNOWN
-        // ═══════════════════════════════
-
         return sock.sendMessage(jid, {
             text:
                 '📦 *Store — Help*\n\n' +

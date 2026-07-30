@@ -1,4 +1,4 @@
-// ./commands/gemini.js
+// ./commands/claude
 
 const axios = require('axios');
 
@@ -37,13 +37,15 @@ function extractResponse(data) {
     if (!data) return '';
     if (typeof data === 'string') return data;
     
-    const fields = ['result', 'reply', 'response', 'answer', 'text', 'content', 'message', 'output'];
+    // Priority fields
+    const fields = ['result', 'reply', 'response', 'answer', 'text', 'content', 'message', 'output', 'data'];
     for (const field of fields) {
         if (data[field] && typeof data[field] === 'string' && data[field].trim().length > 5) {
             return data[field].trim();
         }
     }
     
+    // Last chance: any string > 10 chars
     if (typeof data === 'object') {
         const values = Object.values(data);
         for (const val of values) {
@@ -55,21 +57,30 @@ function extractResponse(data) {
     return '';
 }
 
-// APIs testés et fonctionnels
 const APIS = [
     {
-        name: 'Neosoft',
-        url: (q) => `https://api.neosoft.best/api/ai/gemini?text=${encodeURIComponent(q)}`,
-        timeout: 40000,
-    },
-    {
-        name: 'DavidCyril Gemini 3 pro',
-        url: (q) => `https://apis.davidcyriltech.my.id/ai/gemini-3-pro?prompt=${encodeURIComponent(q)}`,
+        name: 'DavidCyril Claude-Sonnet',
+        url: (q) => `https://apis.davidcyriltech.my.id/ai/claude-sonnet-4.6?prompt=${encodeURIComponent(q)}`,
         timeout: 50000,
     },
     {
-        name: 'PrinceTech Gmini',
-        url: (q) => `https://api.princetechn.com/api/ai/geminiai?apikey=prince&q=${encodeURIComponent(q)}`,
+        name: 'DavidCyril GPT-3',
+        url: (q) => `https://apis.davidcyriltech.my.id/ai/gpt3?text=${encodeURIComponent(q)}`,
+        timeout: 40000,
+    },
+    {
+        name: 'PrinceTech GPT-4o',
+        url: (q) => `https://api.princetechn.com/api/ai/gpt4o?apikey=prince&q=${encodeURIComponent(q)}`,
+        timeout: 35000,
+    },
+    {
+        name: 'PrinceTech GPT-4',
+        url: (q) => `https://api.princetechn.com/api/ai/gpt?apikey=prince&q=${encodeURIComponent(q)}`,
+        timeout: 35000,
+    },
+    {
+        name: 'Yupra GPT-5',
+        url: (q) => `https://api.yupra.my.id/api/ai/gpt5?text=${encodeURIComponent(q)}`,
         timeout: 40000,
     },
 ];
@@ -77,21 +88,21 @@ const APIS = [
 function getLocalFallback(query) {
     const q = query.toLowerCase().trim();
     const responses = {
-        'hello': 'Hello! I\'m Gemini AI. How can I help you today? 🧠',
-        'hi': 'Hi there! 👋 I\'m Gemini AI, ready to assist!',
-        'bonjour': 'Bonjour! Je suis Gemini AI. Comment puis-je vous aider? 🧠',
-        'salut': 'Salut! 😊 Je suis Gemini, à votre disposition!',
-        'who are you': 'I\'m Gemini AI, an advanced language model! 🧠',
-        'qui es-tu': 'Je suis Gemini AI, un modèle de langage avancé! 🧠',
-        'what is your name': 'My name is Gemini AI! ⚡',
-        'comment tu t\'appelles': 'Je m\'appelle Gemini AI! ⚡',
+        'hello': 'Hello! I\'m Claude. How can I assist you today? 🧠',
+        'hi': 'Hi there! 👋 I\'m Claude AI, ready to help!',
+        'bonjour': 'Bonjour! Je suis Claude AI. Comment puis-je vous aider? 🧠',
+        'salut': 'Salut! 😊 Je suis Claude AI, à votre service!',
+        'who are you': 'I\'m Claude AI, an advanced language model! 🧠',
+        'qui es-tu': 'Je suis Claude AI, un modèle de langage avancé! 🧠',
+        'what is your name': 'My name is Venice AI! ⚡',
+        'comment tu t\'appelles': 'Je m\'appelle Venice AI! ⚡',
     };
     return responses[q] || null;
 }
 
 module.exports = {
-    name: 'gemini',
-    aliases: ['google', 'bard', 'g'],
+    name: 'claude',
+    aliases: ['veniceai', 'vai'],
     category: 'ai',
 
     async execute({ sock, msg, args, jid }) {
@@ -99,13 +110,13 @@ module.exports = {
 
         if (!query || query.trim().length < 2) {
             return sock.sendMessage(jid, {
-                text: '🧠 *Gemini AI*\n\n' +
-                      '⚡ *Usage:* .gemini <question>\n\n' +
+                text: '🧠 *Claude AI*\n\n' +
+                      '⚡ *Usage:* .claude <your question>\n\n' +
                       '✨ *Examples:*\n' +
-                      '• .gemini What is JavaScript?\n' +
-                      '• .gemini Write a poem about nature\n' +
-                      '• .gemini Explain quantum physics\n\n' +
-                      '🔧 *Powered by Multiple AI Models*',
+                      '• .Claude What is your model?\n' +
+                      '• .claude Write a poem\n' +
+                      '• .claude Explain machine learning\n\n' +
+                      '💬 *Powered by Zenitsu(Claude + GPT)*',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
@@ -114,10 +125,10 @@ module.exports = {
         const cached = getCached(query);
         if (cached) {
             await sock.sendMessage(jid, {
-                text: `🧠 *Gemini AI*\n\n` +
+                text: `🧠 *Claude AI*\n\n` +
                       `❓ *Q:* ${query.slice(0, 200)}${query.length > 200 ? '...' : ''}\n\n` +
                       `💬 *A:* ${cached}\n\n` +
-                      `⚡ _Zenitsu AI (cached)_`,
+                      `⚡ _Cached Response_`,
                 contextInfo: STYLE,
             }, { quoted: msg });
             try { await sock.sendMessage(jid, { react: { text: '⚡', key: msg.key } }); } catch (_) {}
@@ -133,7 +144,7 @@ module.exports = {
         for (let i = 0; i < APIS.length; i++) {
             const api = APIS[i];
             try {
-                console.log(`🧠 Gemini: Trying ${api.name}...`);
+                console.log(`🧠 Claude: Trying ${api.name}...`);
 
                 if (i > 0) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -191,7 +202,7 @@ module.exports = {
 
             const errorList = errors.slice(0, 3).map(e => `• ${e}`).join('\n');
             return sock.sendMessage(jid, {
-                text: `❌ *All APIs unavailable.*\n\n` +
+                text: `❌ *Claude AI Unavailable*\n\n` +
                       `💡 *Tips:*\n` +
                       `• Try again in a few moments\n` +
                       `• Simplify your question\n\n` +
@@ -202,20 +213,20 @@ module.exports = {
 
         setCache(query, reply);
 
+        // Limiter la longueur
         const formatted = reply.length > 3900
             ? reply.slice(0, 3850) + '...\n\n📝 *Response truncated*'
             : reply;
 
         await sock.sendMessage(jid, {
-            text: `🧠 *Gemini AI*\n\n` +
+            text: `🧠 *Claude AI*\n\n` +
                   `❓ *Q:* ${query.slice(0, 200)}${query.length > 200 ? '...' : ''}\n\n` +
                   `💬 *A:* ${formatted}\n\n` +
                   `🔧 *Provider:* ${used}\n` +
-                  `⚡ _Powered by Zenitsu AI_`,
-            contextInfo: STYLE,
-        }, { quoted: msg });
+                  `⚡ _Powered by Zenitsu_`,
+                contextInfo: STYLE,
+            }, { quoted: msg });
 
         try { await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
     },
 };
-

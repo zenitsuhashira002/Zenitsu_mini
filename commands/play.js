@@ -1,6 +1,8 @@
 // ./commands/play.js
 
 const axios = require('axios');
+const { createReadStream } = require('fs');
+const { Readable } = require('stream');
 
 // ═══════════════════════════════════════
 // CONFIG
@@ -307,19 +309,26 @@ module.exports = {
 };
 
 // ═══════════════════════════════════════
-// DOWNLOAD
+// DOWNLOAD - VERSION CORRIGÉE
 // ═══════════════════════════════════════
 
-// ./commands/play.js — Partie à remplacer dans downloadMusic()
-
 async function downloadMusic(sock, msg, jid, track, query) {
-    let dlResult = null;
+    // Envoyer un message de progression
+    await sock.sendMessage(jid, {
+        text: `⏳ *Downloading:* ${track.title}\n📥 Please wait...`,
+        contextInfo: STYLE,
+    }, { quoted: msg });
 
+    let dlResult = null;
+    let usedApi = '';
+
+    // Essayer chaque API de téléchargement
     for (const api of DOWNLOAD_APIS) {
         try {
             console.log(`⬇️ Download: ${api.name}...`);
             dlResult = await api.fn(track.url);
             if (dlResult?.downloadUrl && dlResult.downloadUrl.startsWith('http')) {
+                usedApi = api.name;
                 console.log(`✅ Download: ${api.name}`);
                 break;
             }
@@ -330,49 +339,100 @@ async function downloadMusic(sock, msg, jid, track, query) {
 
     if (!dlResult?.downloadUrl) {
         try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
-        return sock.sendMessage(jid, { text: '❌ All download sources failed.', contextInfo: STYLE }, { quoted: msg });
+        return sock.sendMessage(jid, { 
+            text: '❌ *All download sources failed.*\n\n💡 Try again later or use another song.',
+            contextInfo: STYLE 
+        }, { quoted: msg });
     }
 
-    try { await sock.sendMessage(jid, { react: { text: '⬇️', key: msg.key } }); } catch (_) {}
+    try { 
+        await sock.sendMessage(jid, { react: { text: '⬇️', key: msg.key } }); 
+    } catch (_) {}
 
-    const audioRes = await axios.get(dlResult.downloadUrl, { responseType: 'arraybuffer', timeout: 120000 });
-    const buffer = Buffer.from(audioRes.data);
-    const sizeMB = (buffer.length / 1048576).toFixed(2);
+    // TÉLÉCHARGER L'AUDIO
+    let audioBuffer = null;
+    let sizeMB = 0;
+    
+    try {
+        console.log(`📥 Downloading audio from: ${dlResult.downloadUrl}`);
+        
+        const audioRes = await axios.get(dlResult.downloadUrl, { 
+            responseType: 'arraybuffer', 
+            timeout: 120000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
+        
+        audioBuffer = Buffer.from(audioRes.data);
+        sizeMB = (audioBuffer.length / 1048576).toFixed(2);
+        
+        console.log(`✅ Audio downloaded: ${sizeMB} MB`);
+        
+    } catch (err) {
+        console.log(`❌ Audio download error: ${err.message}`);
+        try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+        return sock.sendMessage(jid, { 
+            text: '❌ *Failed to download audio.*\n\n' +
+                  `⚠️ Error: ${err.message}\n` +
+                  '💡 Try again with a different song.',
+            contextInfo: STYLE 
+        }, { quoted: msg });
+    }
 
+    // Préparer les métadonnées
     const title = dlResult.title || track.title || query;
+    const artist = dlResult.artist || track.channel || 'YouTube Music';
     const thumb = dlResult.thumbnail || track.thumbnail || FALLBACK_THUMB;
+    const duration = track.durationSeconds || dlResult.duration || 0;
 
-    // ⭐ Envoyer l'audio avec le NOM et l'IMAGE
-    await sock.sendMessage(jid, {
-        audio: buffer,
-        mimetype: 'audio/mpeg',
-        ptt: false,
-        fileName: `${title.slice(0, 100)}_zenitsu.mp3`,
-        contextInfo: {
-            externalAdReply: {
-                title: title,
-                body: dlResult.artist || track.channel || 'YouTube Music',
-                thumbnailUrl: thumb,
-                sourceUrl: track.url,
-                mediaType: 1,
-                renderLargerThumbnail: true,
+    try {
+        // ENVOYER L'AUDIO AVEC CONTEXTE
+        console.log(`📤 Sending audio: ${title}`);
+        
+        await sock.sendMessage(jid, {
+            audio: audioBuffer,
+            mimetype: 'audio/mpeg',
+            ptt: false,
+            fileName: `${title.slice(0, 100)}_zenitsu.mp3`,
+            contextInfo: {
+                externalAdReply: {
+                    title: title.slice(0, 100),
+                    body: artist.slice(0, 100),
+                    thumbnailUrl: thumb,
+                    sourceUrl: track.url || `https://youtube.com/watch?v=${track.id || ''}`,
+                    mediaType: 1,
+                    renderLargerThumbnail: true,
+                    showAdAttribution: false,
+                },
             },
-            ...STYLE,
-        },
-    }, { quoted: msg });
+        }, { quoted: msg });
 
-    // Message d'info (optionnel, mais gardé pour les détails)
-    await sock.sendMessage(jid, {
-        text:
-            '🎵 *Music Downloaded*\n\n' +
-            `📌 *Title:* ${title}\n` +
-            (dlResult.artist ? `🎤 *Artist:* ${dlResult.artist}\n` : '') +
-            (track.durationSeconds ? `⏱ *Duration:* ${formatDuration(track.durationSeconds)}\n` : '') +
-            `📦 *Size:* ${sizeMB} MB\n` +
-            `🔗 ${track.url}\n\n` +
-            '⚡ _Zenitsu_',
-        contextInfo: STYLE,
-    }, { quoted: msg });
+        console.log(`✅ Audio sent successfully`);
 
-    try { await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
+        // Envoyer un message récapitulatif (plus court cette fois)
+        await sock.sendMessage(jid, {
+            text:
+                '🎵 *Music Downloaded*\n\n' +
+                `📌 *Title:* ${title.slice(0, 100)}${title.length > 100 ? '...' : ''}\n` +
+                `🎤 *Artist:* ${artist.slice(0, 100)}${artist.length > 100 ? '...' : ''}\n` +
+                (duration ? `⏱ *Duration:* ${formatDuration(duration)}\n` : '') +
+                `📦 *Size:* ${sizeMB} MB\n` +
+                `🔧 *Source:* ${usedApi}\n\n` +
+                `⚡ _Powered by Zenitsu AI_`,
+            contextInfo: STYLE,
+        }, { quoted: msg });
+
+        try { await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
+
+    } catch (err) {
+        console.log(`❌ Send audio error: ${err.message}`);
+        try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+        return sock.sendMessage(jid, { 
+            text: '❌ *Failed to send audio.*\n\n' +
+                  `⚠️ Error: ${err.message}\n` +
+                  '💡 Try again or use a shorter song.',
+            contextInfo: STYLE 
+        }, { quoted: msg });
+    }
 }
