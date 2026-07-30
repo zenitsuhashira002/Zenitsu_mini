@@ -139,8 +139,8 @@ async function goodbyeEvent(sock, update) {
                     `𝙶𝚘𝚘𝚍𝚋𝚢𝚎 🫂 @${jid.split('@')[0]} !☹\n\n` +
                     `➟ *Group* ${groupName}\n` +
                     `➟ ${members} members now.\n\n` +
-                    `𝙒𝙚 𝙬𝙞𝙡𝙡 𝙢𝙞𝙨𝙨 𝙮𝙤𝙪 🥀\n` +
-                    `*https://whatsapp.com/channel/0029Vb8BKWwH5JLxq1ef1R43*`;
+                    `🥀\n` +
+                    `**`;
 
                 // Contexte CyberNova commun
                 const contextInfo = {
