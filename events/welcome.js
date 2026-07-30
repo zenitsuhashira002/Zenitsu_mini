@@ -29,7 +29,8 @@ function saveWelcome(data) {
     }
 }
 
-// 🎲 Liste d'images (support mp4 et jpg)const welcomeImages = [
+// 🎲 Liste d'images (support mp4 et jpg)
+const welcomeImages = [
     'https://files.catbox.moe/jcf2qc.jpg',
     'https://files.catbox.moe/tz07yl.jpg',
     'https://iili.io/BsJvF7R.jpg',

@@ -37,7 +37,7 @@ module.exports = {
 
         try {
             const { data } = await axios.get(
-                `https://api.giftedtech.co.ke/api/ai/txt2img?apikey=gifted&prompt=${encodeURIComponent(prompt)}`,
+                `https://apis.davidcyriltech.my.id/epicrealism?prompt=${encodeURIComponent(prompt)}`,
                 { timeout: 90000 }
             );
 

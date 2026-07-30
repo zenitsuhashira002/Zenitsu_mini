@@ -8,27 +8,27 @@ const axios = require('axios');
 
 const LYRICS_APIS = [
     {
-        name: 'GiftedTech Lyrics',
-        url: (query) => `https://api.giftedtech.co.ke/api/search/lyrics?apikey=gifted&query=${encodeURIComponent(query)}`,
+        name: 'Prince tech Lyrics',
+        url: (query) => `https://api.princetechn.com/api/search/lyrics?apikey=prince&query=${encodeURIComponent(query)}`,
         extract: (data) => ({
             title: data?.result?.title || '',
             artist: data?.result?.artist || '',
             lyrics: data?.result?.lyrics || '',
             image: data?.result?.image || '',
             link: data?.result?.link || '',
-            source: 'GiftedTech',
+            source: 'Prince tech',
         }),
     },
     {
-        name: 'GiftedTech Lyrics v2',
-        url: (query) => `https://api.giftedtech.co.ke/api/search/lyricsv2?apikey=gifted&query=${encodeURIComponent(query)}`,
+        name: 'Prince Tech Lyrics v2',
+        url: (query) => `https://api.princetechn.com/api/search/lyricsv2?apikey=prince&query=${encodeURIComponent(query)}`,
         extract: (data) => ({
             title: data?.result?.title || data?.title || '',
             artist: data?.result?.artist || data?.artist || '',
             lyrics: data?.result?.lyrics || data?.lyrics || '',
             image: data?.result?.image || data?.image || '',
             link: data?.result?.link || data?.link || '',
-            source: 'GiftedTech v2',
+            source: 'Prince V2',
         }),
     },
     {

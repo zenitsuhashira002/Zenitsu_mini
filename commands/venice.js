@@ -37,7 +37,7 @@ module.exports = {
 
         try {
             const { data } = await axios.get(
-                `https://api.giftedtech.co.ke/api/ai/venice?apikey=gifted&q=${encodeURIComponent(query)}`,
+                `https://apis.davidcyriltech.my.id/ai/claude-sonnet-4.6?prompt=${encodeURIComponent(query)}`,
                 { timeout: 60000 }
             );
 

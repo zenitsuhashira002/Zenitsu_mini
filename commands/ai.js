@@ -15,13 +15,13 @@ const STYLE = {
 const APIS = [
     {
         name: 'PrinceTech GPT-4o',
-        url: (q) => `https://api.princetechn.com/api/ai/gpt4o?apikey=prince&q=${encodeURIComponent(q)}`,
+        url: (q) => `https://api.princetechn.com/api/ai/gpt4?apikey=prince&q=${encodeURIComponent(q)}`,
         timeout: 45000,
         extract: (data) => data?.result || data?.reply || data?.response || data?.answer || '',
     },
     {
         name: 'PrinceTech GPT-4',
-        url: (q) => `https://api.princetechn.com/api/ai/gpt4?apikey=prince&q=${encodeURIComponent(q)}`,
+        url: (q) => `https://api.princetechn.com/api/ai/gpt?apikey=prince&q=${encodeURIComponent(q)}`,
         timeout: 45000,
         extract: (data) => data?.result || data?.reply || data?.response || data?.answer || '',
     },

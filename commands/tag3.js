@@ -1,8 +1,3 @@
-
-~/.../testwagit/commands $ cat tag.js
-
-// ./commands/tag.js
-
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 
 module.exports = {

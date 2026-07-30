@@ -36,7 +36,7 @@ module.exports = {
 
         try {
             const { data } = await axios.get(
-                `https://api.giftedtech.co.ke/api/search/google?apikey=gifted&query=${encodeURIComponent(query)}`,
+                `https://apis.davidcyriltech.my.id/search/google?q=${encodeURIComponent(query)}&start=0&hl=fr&safe=active`,
                 { timeout: 30000 }
             );
 
