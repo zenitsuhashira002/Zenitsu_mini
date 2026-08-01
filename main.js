@@ -183,7 +183,7 @@ function selfJidOf(sock) {
 
 // ──────────────────────────────────────────────
 //  ÉTAT PAR BOT (owners / mode / prefix / antidelete)
-//  Chaque bot (main ou sous-bot) possède un état 100% indépendant,
+// Chaque bot (main ou sous-bot) possède un état 100% indépendant,
 //  persisté sur disque pour survivre aux redémarrages.
 // ──────────────────────────────────────────────
 const botStates = new Map();
