@@ -1,11 +1,9 @@
 'use strict';
-
 // ╔══════════════════════════════════════════════════════════════╗
 // ║              ZENITSU BOT — main.js (CommonJS)               ║
 // ║     Session Permanente · Pair Code · Baileys · Render       ║
 // ║   Owners dynamiques · Modes · Anti-inactivité · Soft-restart║
 // ╚══════════════════════════════════════════════════════════════╝
-
 const {
   default: makeWASocket,
   useMultiFileAuthState,
@@ -127,7 +125,7 @@ function setCooldown(number) {
 //  ANTI-SPAM CONNEXION
 // ──────────────────────────────────────────────
 const connectionMessageThrottle = new Map();
-const THROTTLE_TIME = 10000;
+const THROTTLE_TIME = 30000;
 
 function shouldSendConnectionMessage(key) {
   const nowTime = Date.now();
