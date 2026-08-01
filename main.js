@@ -308,7 +308,7 @@ async function verifyOnWhatsApp(sock, number) {
     const [res] = await sock.onWhatsApp(number);
     return res?.exists === true;
   } catch (e) {
-    warn(`Vérification onWhatsApp échouée pour ${number} : ${e.message}`);
+    warn(`Verification onWhatsApp échouée pour ${number} : ${e.message}`);
     return false;
   }
 }
