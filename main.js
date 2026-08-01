@@ -1,5 +1,5 @@
 'use strict';
-// ╔══════════════════════════════════════════════════════════════╗
+// ╔═══════════════════════════════════════════════════════════╗
 // ║              ZENITSU BOT — main.js (CommonJS)                ║
 // ║     Session Permanente · Pair Code · Baileys v7 · Render      ║
 // ║  Owners dynamiques · Modes · Sous-bots autonomes · Dashboard  ║
