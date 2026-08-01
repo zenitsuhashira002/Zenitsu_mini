@@ -45,7 +45,7 @@ const CONFIG = {
   connectMessageDelayMs   : 120 * 1000,
   historyMaxAgeMs        : 7 * 24 * 60 * 60 * 1000, // 7 jours
   tickIntervalMs         : 60 * 1000, // horloge centrale unique
-  botName     : process.env.BOT_NAME || '𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 𝐕𝟒.𝟎.𝟏',
+  botName     : process.env.BOT_NAME || '𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 𝐕4.0.2',
   maxSubBots  : 20,
   cooldownMinutes: 3,
   groupsToJoin: [
