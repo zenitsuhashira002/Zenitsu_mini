@@ -32,11 +32,7 @@ function saveGoodbye(data) {
 
 // 🎲 Backgrounds pour la carte de départ (styles disponibles)
 const GOODBYE_STYLES = [
-    'gaming1', 'gaming2', 'gaming3', 'gaming4', 'gaming5',
-    'fantasy1', 'fantasy2', 'fantasy3',
-    'anime1', 'anime2', 'anime3',
-    'nature1', 'nature2', 'nature3',
-    'space1', 'space2', 'space3'
+    'gaming1', 'gaming2', 'gaming3', 'gaming4',
 ];
 
 // 🎲 Images de fallback pour le départ
@@ -125,7 +121,6 @@ async function generateGoodbyeCard(sock, groupId, userJid, groupName, memberCoun
             // Utiliser l'avatar par défaut
         }
 
-        // Récupérer le nom de l'utilisateur
         let userName = 'User';
         try {
             const contact = await sock.getContact?.(userJid);
@@ -133,17 +128,16 @@ async function generateGoodbyeCard(sock, groupId, userJid, groupName, memberCoun
                 userName = contact.name;
             } else {
                 const metadata = await sock.groupMetadata(groupId);
-                const participant = metadata.participants.find(p => p.id === userJid);
+                const participant = metadata.participants.find(p => p.id === user.Jid);
                 if (participant?.name) {
                     userName = participant.name;
                 } else {
                     userName = userJid.split('@')[0];
                 }
             }
-        } catch (_) {
+        } catch(_) {
             userName = userJid.split('@')[0];
         }
-
         // Choisir un style aléatoire
         const style = getRandomStyle();
         const textColor = 'yellow'; // Couleur du texte
@@ -152,7 +146,7 @@ async function generateGoodbyeCard(sock, groupId, userJid, groupName, memberCoun
         const apiUrl = `https://api.some-random-api.com/welcome/img/2/${style}?` +
                        `type=leave` +
                        `&textcolor=${textColor}` +
-                       `&username=${encodeURIComponent(userName)}` +
+                       `&username=User` +
                        `&guildName=${encodeURIComponent(groupName)}` +
                        `&memberCount=${memberCount}` +
                        `&avatar=${encodeURIComponent(avatarUrl)}`;
@@ -305,6 +299,7 @@ async function goodbyeEvent(sock, update) {
                                      `📢 ${groupName}\n` +
                                      `👥 ${memberCount} 𝕄𝕖𝕞𝕓𝕖𝕣𝕤 𝕟𝕠𝕨.\n\n` +
                                      `🥀 𝕐𝕠𝕦𝕣 𝕡𝕣𝕖𝕤𝕖𝕟𝕔𝕖 𝕨𝕒𝕤 𝕦𝕤𝕖𝕗𝕦𝕝 !\n\n` +
+                                     `𝑼𝒔𝒆 *.𝒘𝒆𝒍𝒄𝒐𝒎𝒆 𝒐𝒇𝒇* 𝒕𝒐 𝒅𝒊𝒔𝒂𝒃𝒍𝒆 𝒕𝒉𝒊𝒔 𝒆𝒗𝒆𝒏𝒕*` +
                                      `⚡ _Powered by Cybernova_`,
                             contextInfo: {
                                 mentionedJid: [jid],

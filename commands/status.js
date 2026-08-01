@@ -709,7 +709,7 @@ module.exports = {
         if (args[0]?.toLowerCase() === 'help') {
             await react('📋');
             return reply(
-`╭━━━━❲ *SYSTEM STATUS* ❳━━━━╮
+`╭━━━❲ *SYSTEM STATUS* ❳━━━╮
 ┃
 ┃  🔍 *What it checks :*
 ┃  • Node.js runtime & uptime
@@ -727,7 +727,7 @@ module.exports = {
 ┃  .status
 ┃  .status help
 ┃
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯
+╰━━━━━━━━━━━━━━━━━━━━━━━━━╯
 
 ━━━━━━━━━━━━━━━
 _©CybernovA_`,

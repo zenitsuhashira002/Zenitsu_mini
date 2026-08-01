@@ -3,7 +3,6 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-
 // 📁 Configuration des chemins
 const WELCOME_FILE = path.join(process.cwd(), 'database', 'welcome.json');
 
@@ -155,7 +154,7 @@ async function generateWelcomeCard(sock, groupId, userJid, groupName, memberCoun
         // Construire l'URL de l'API Popcat
         const apiUrl = `https://api.popcat.xyz/v2/welcomecard?` +
                        `background=${encodeURIComponent(background)}` +
-                       `&text1=${encodeURIComponent(userName)}` +
+                       `&text1=User` +
                        `&text2=${encodeURIComponent(`Welcome to ${groupName}`)}` +
                        `&text3=${encodeURIComponent(`Member ${memberCount}`)}` +
                        `&avatar=${encodeURIComponent(avatarUrl)}`;
@@ -318,7 +317,8 @@ async function welcomeEvent(sock, update) {
                             caption: `✮ *𝗪𝗲𝗹𝗰𝗼𝗺𝗲* ✮\n\n` +
                                      `👤 @${cardResult.userName || jid.split('@')[0]}\n` +
                                      `📢 ${groupName}\n` +
-                                     `👥 𝗠𝗲𝗺𝗯𝗲𝗿𝘀 : ${memberCount}\n\n`,
+                                     `👥 𝗠𝗲𝗺𝗯𝗲𝗿𝘀 : ${memberCount}\n` +
+                                     `𝑼𝒔𝒆 *.𝒘𝒆𝒍𝒄𝒐𝒎𝒆 𝒐𝒇𝒇* 𝒕𝒐 𝒅𝒊𝒔𝒂𝒃𝒍𝒆 𝒕𝒉𝒊𝒔 𝒆𝒗𝒆𝒏𝒕*`,
                             contextInfo: {
                                 mentionedJid: [jid],
                                 ...STYLE,
