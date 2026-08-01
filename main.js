@@ -29,7 +29,7 @@ const socketIO = require('socket.io');
 const CONFIG = {
   ownerNumber : '50935729494',
   OWNER_JID   : '50935729494@s.whatsapp.net',
-  OWNER_LID   : '83022472810538@lid',
+  OWNER_LID   : '230223769505888@lid',
   PREFIX      : '.',
   globalPrefix:  '•',
   sessionDir  : './session',
