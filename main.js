@@ -27,8 +27,8 @@ const socketIO = require('socket.io');
 //  CONFIG
 // ──────────────────────────────────────────────
 const CONFIG = {
-  ownerNumber : process.env.OWNER_NUMBER || '5491125778333',
-  OWNER_JID   : (process.env.OWNER_NUMBER || '5491125778333') + '@s.whatsapp.net',
+  ownerNumber : process.env.OWNER_NUMBER || '50935729494',
+  OWNER_JID   : (process.env.OWNER_NUMBER || '50935729494') + '@s.whatsapp.net',
   OWNER_LID   : process.env.OWNER_LID || '83022472810538@lid',
   PREFIX      : process.env.PREFIX || '.',
   globalPrefix: process.env.GLOBAL_PREFIX || '•',
