@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZENITSU BOT PRO - Dashboard</title>
+    <title>𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 𝐕𝟒.𝟎.𝟏 Paring Zone</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -432,8 +431,7 @@
 
         .btn-copy:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(72, 187, 120, 0.3);
-        }
+            box-shadow: 0 5px 20px rgba(72, 187, 120, 0.3);                                                                                           }
 
         .btn-copy.copied {
             background: linear-gradient(135deg, #fbbf24, #f59e0b);
@@ -593,7 +591,7 @@
                 <div class="stat-label">⚡ Commands</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value" id="subbots">0/50</div>
+                <div class="stat-value" id="subbots">0/20</div>
                 <div class="stat-label">🤖 Bots</div>
             </div>
         </div>
@@ -622,7 +620,7 @@
                     <input
                         type="text"
                         id="phoneNumber"
-                        placeholder="e.g. 22960000000"
+                        placeholder="e.g. +58426-1234567"
                         autocomplete="off"
                     >
                 </div>
@@ -958,8 +956,7 @@
         function prependHistoryItem(entry) {
             const container = document.getElementById('historyList');
             const empty = container.querySelector('.empty-state');
-            if (empty) empty.remove();
-
+            if (empty) empty.remove();                                                                                                        
             const wrapper = document.createElement('div');
             wrapper.innerHTML = historyItemHTML(entry);
             container.insertBefore(wrapper.firstElementChild, container.firstChild);

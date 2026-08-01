@@ -1,8 +1,8 @@
-const antideleteModule = require('../events/antidelete');
+const antideleteModule = require('../events/antimarabout');
 
 module.exports = {
-    name: 'antidelete',
-    aliases: ['antidel'],
+    name: 'antimarabout',
+    aliases: ['marabout'],
     category: 'owner',
     execute: async ({ sock, msg, args, jid }) => {
         await antideleteModule.command(sock, msg, args, jid);

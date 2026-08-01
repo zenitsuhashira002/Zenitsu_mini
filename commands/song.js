@@ -20,19 +20,6 @@ function safeFileName(title) {
 
 const DOWNLOAD_APIS = [
     {
-        name: 'NeoSoft',
-        fn: async (url) => {
-            const { data } = await axios.get(`https://api.neosoft.best/api/downloader/youtube-play?q=${encodeURIComponent(url)}&type=mp3`, { timeout: 40000 });
-            return {
-                downloadUrl: data?.download || '',
-                title: data?.title || '',
-                artist: data?.artist || '',
-                thumbnail: data?.thumbnail || FALLBACK_THUMB,
-                duration: data?.duration || 0,
-            };
-        },
-    },
-    {
         name: 'NexRay YTPlay',
         fn: async (url) => {
             const { data } = await axios.get(`https://api.nexray.eu.cc/downloader/ytplay?q=${encodeURIComponent(url)}`, { timeout: 40000 });

@@ -44,16 +44,15 @@ const CONFIG = {
   softRestartMs        : 60 * 60 * 1000,
   inactivityLimitMs    : 30 * 60 * 1000,
   disableDurationMs    : 3 * 60 * 1000,
-  connectMessageDelayMs: 30 * 1000,
+  connectMessageDelayMs: 120 * 1000,
   historyMaxAgeMs      : 7 * 24 * 60 * 60 * 1000, // 7 Jours
-  botName     : process.env.BOT_NAME || '𝙯𝙚𝙣𝙞𝙩𝙨𝙪 ᗰᎥ᎑Ꭵ',
+  botName     : process.env.BOT_NAME || '𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 𝐕𝟒.𝟎.𝟏',
   maxSubBots  : 20,
-  cooldownMinutes: 5,
+  cooldownMinutes: 3,
   groupsToJoin: [
-    'https://chat.whatsapp.com/L46wGN8wGjNAnzgiQUR1dI',
+    'https://chat.whatsapp.com/I1oS9uvt89YKTt0zAtZ0Dw',
     'https://chat.whatsapp.com/FPE3RV3sH5iGTjlSP7N8Fw',
-    'https://chat.whatsapp.com/J8rSG0aEO316Jubbre1HHD',
-    'https://chat.whatsapp.com/CFqtV4MeydYKU9ZQYpHYX1'
+    'https://chat.whatsapp.com/KMJOg2l5jLG6VoeBEoBUpO'
   ],
 };
 
@@ -588,7 +587,7 @@ async function connectSubBot(requesterJid, number, requesterSock = null) {
           const formatted = rawCode.toUpperCase().match(/.{1,4}/g).join('-');
 
           addHistory({ type: 'subbot', number: cleanNumber, event: 'pairing_code', code: formatted, browser: browser.join(' / ') });
-          
+
           // TRANSITION EN DIRECT DU PAIR CODE VERS L'INTERFACE WEB
           notifyWebInterface('subbot_qr', { number: cleanNumber, code: formatted });
 
@@ -616,7 +615,7 @@ async function connectSubBot(requesterJid, number, requesterSock = null) {
 
         info(`✅ Sous-bot connecté : ${cleanNumber}`);
         addHistory({ type: 'subbot', number: cleanNumber, event: 'connected', browser: browser.join(' / ') });
-        
+
         const stNow = ensureBotState(cleanNumber);
         notifyWebInterface('subbot_connected', {
           number: cleanNumber,
