@@ -32,7 +32,7 @@ function saveGoodbye(data) {
 
 // 🎲 Backgrounds pour la carte de départ (styles disponibles)
 const GOODBYE_STYLES = [
-    'gaming1', 'gaming2', 'gaming3', 'gaming4',
+    'gaming1', 'gaming2', 'gaming3', 'gaming4', 'space', 'stars', 'sunset',
 ];
 
 // 🎲 Images de fallback pour le départ

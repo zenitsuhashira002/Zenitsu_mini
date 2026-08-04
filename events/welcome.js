@@ -74,6 +74,11 @@ const FALLBACK_IMAGES = [
     'https://files.catbox.moe/718prk.jpg',
     'https://files.catbox.moe/3c33kh.jpg',
     'https://files.catbox.moe/verxnu.jpg',
+    'https://iili.io/CUPd0qF.jpg',
+    'https://iili.io/CUPHoIS.jpg',
+    'https://iili.io/CU6bnaV.jpg',
+    'https://iili.io/CU6tzlV.jpg',
+    'https://iili.io/CU6ZrMv.jpg',
     'https://files.catbox.moe/noph7e.jpg'
 ];
 
