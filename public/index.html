@@ -4,7 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 𝐕𝟒.𝟎.𝟏 Paring Zone</title>
+    
+    <!-- 🔥 Open Graph / WhatsApp / Social Media Preview -->
+    <meta property="og:title" content="𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 𝐕𝟒.𝟎.𝟏 — WA Bot Dashboard">
+    <meta property="og:description" content="Multi-bot WhatsApp automation — Connect, manage, and monitor your bots in real-time.">
+    <meta property="og:image" content="https://iili.io/CUBbHxe.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 𝐕𝟒.𝟎.𝟏 — WA Bot Dashboard">
+    <meta name="twitter:description" content="Multi-bot WhatsApp automation — Connect, manage, and monitor your bots in real-time.">
+    <meta name="twitter:image" content="https://iili.io/CUBbHxe.jpg">
+    
+    <!-- WhatsApp specific (uses og:image) -->
+    <meta property="og:image:secure_url" content="https://iili.io/CUBbHxe.jpg">
+    <meta property="og:image:alt" content="Zenitsu Mini Bot Dashboard">
+    
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -17,10 +38,13 @@
 
         .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
 
+        /* 🔥 HEADER AVEC IMAGE DE FOND */
         .header {
-            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            background: 
+                linear-gradient(135deg, rgba(36, 26, 5, 0.85) 0%, rgba(74, 53, 16, 0.75) 50%, rgba(46, 36, 8, 0.85) 100%),
+                url('https://iili.io/CUBbHxe.jpg') center/cover no-repeat;
             border-radius: 20px;
-            padding: 30px;
+            padding: 30px 35px;
             margin-bottom: 30px;
             box-shadow: 0 10px 40px rgba(245, 158, 11, 0.35);
             display: flex;
@@ -28,24 +52,73 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 20px;
+            min-height: 160px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Effet de brillance sur le header */
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent 30%,
+                rgba(251, 191, 36, 0.08) 50%,
+                transparent 70%
+            );
+            animation: headerShine 8s infinite linear;
+        }
+
+        @keyframes headerShine {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .header-left {
+            position: relative;
+            z-index: 1;
         }
 
         .header-left h1 {
             font-size: 2.5em;
             margin-bottom: 10px;
-            color: #241a05;
+            color: #fbbf24;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            letter-spacing: 2px;
         }
 
         .header-left .subtitle {
-            opacity: 0.85;
+            opacity: 0.9;
             font-size: 1.1em;
-            color: #3a2a08;
+            color: #f5e2b8;
+            text-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Badge version */
+        .version-badge {
+            display: inline-block;
+            background: rgba(251, 191, 36, 0.25);
+            border: 1px solid rgba(251, 191, 36, 0.5);
+            color: #fbbf24;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-top: 8px;
         }
 
         .header-right {
             display: flex;
             gap: 15px;
             align-items: center;
+            position: relative;
+            z-index: 1;
         }
 
         .btn-whatsapp {
@@ -62,11 +135,12 @@
             cursor: pointer;
             transition: all 0.3s;
             text-decoration: none;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
         }
 
         .btn-whatsapp:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(37, 211, 102, 0.4);
+            box-shadow: 0 10px 30px rgba(37, 211, 102, 0.5);
         }
 
         .btn-whatsapp svg {
@@ -102,6 +176,7 @@
             background: linear-gradient(135deg, #fbbf24, #f59e0b);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .stat-label {
@@ -431,7 +506,8 @@
 
         .btn-copy:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(72, 187, 120, 0.3);                                                                                           }
+            box-shadow: 0 5px 20px rgba(72, 187, 120, 0.3);
+        }
 
         .btn-copy.copied {
             background: linear-gradient(135deg, #fbbf24, #f59e0b);
@@ -553,7 +629,13 @@
         @media (max-width: 768px) {
             .main-content { grid-template-columns: 1fr; }
             .stats-grid { grid-template-columns: 1fr 1fr; }
-            .header { flex-direction: column; text-align: center; }
+            .header {
+                flex-direction: column;
+                text-align: center;
+                min-height: 140px;
+                padding: 25px 20px;
+            }
+            .header-left h1 { font-size: 1.8em; }
             .header-right { width: 100%; justify-content: center; }
             .pair-code-container .code-value { font-size: 1.8em; letter-spacing: 4px; }
             .subbot-header { flex-direction: column; align-items: flex-start; }
@@ -564,10 +646,12 @@
 </head>
 <body>
     <div class="container">
+        <!-- 🔥 HEADER AVEC IMAGE DE FOND -->
         <div class="header">
             <div class="header-left">
-                <h1> 𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝗠𝗶𝗻𝗶 XD</h1>
-                <p class="subtitle">WA Bot Dashboard</p>
+                <h1>⚡ 𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝗠𝗶𝗻𝗶 XD</h1>
+                <p class="subtitle">Multi-Bot WhatsApp Automation</p>
+                <span class="version-badge">v4.1.0</span>
             </div>
             <div class="header-right">
                 <a href="https://whatsapp.com/channel/0029Vb8BKWwH5JLxq1ef1R43" target="_blank" class="btn-whatsapp">
@@ -685,6 +769,7 @@
             logEntry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
             logsDiv.insertBefore(logEntry, logsDiv.firstChild);
 
+            // Limiter à 100 logs max
             while (logsDiv.children.length > 100) {
                 logsDiv.removeChild(logsDiv.lastChild);
             }
@@ -810,7 +895,7 @@
             pairArea.scrollIntoView({ behavior: 'smooth' });
         }
 
-        // ── Cartes des sous-bots (adaptées à mode / prefix / antidelete) ──
+        // ── Cartes des sous-bots ──
         function updateSubbotCard(number, status, data = {}) {
             const listDiv = document.getElementById('subbotList');
 
@@ -956,12 +1041,13 @@
         function prependHistoryItem(entry) {
             const container = document.getElementById('historyList');
             const empty = container.querySelector('.empty-state');
-            if (empty) empty.remove();                                                                                                        
+            if (empty) empty.remove();
             const wrapper = document.createElement('div');
             wrapper.innerHTML = historyItemHTML(entry);
             container.insertBefore(wrapper.firstElementChild, container.firstChild);
 
-            while (container.children.length > 150) {
+            // 🔥 Limité à 50 entrées dans le DOM
+            while (container.children.length > 50) {
                 container.removeChild(container.lastChild);
             }
         }
@@ -1045,7 +1131,7 @@
         });
 
         socket.on('main_connected', (data) => {
-            addLog(`✅ Main bot connected: ${data.jid}`, 'success');
+            addLog(`✅ Main bot connected: ${data.number || ''}`, 'success');
             showToast('Main bot connected!', 'success');
         });
 
@@ -1083,12 +1169,12 @@
             })
             .catch(err => addLog('Error loading stats: ' + err.message, 'error'));
 
-        fetch('/api/history?limit=100')
+        fetch('/api/history?limit=50')
             .then(res => res.json())
             .then(data => renderHistorySnapshot(data.history))
             .catch(() => {});
 
-        addLog('🟢  Dashboard ready', 'success');
+        addLog('🟢 Dashboard ready', 'success');
     </script>
 </body>
 </html>

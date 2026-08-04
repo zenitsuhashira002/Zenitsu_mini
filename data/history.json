@@ -1,0 +1,572 @@
+[
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "DRRN-PKEC",
+    "date": "2026-08-02T22:50:18.707Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 515,
+    "date": "2026-08-02T22:50:56.488Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "connected",
+    "browser": "Linux / Vivaldi / 7.6.3799.48",
+    "date": "2026-08-02T22:51:06.201Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T22:53:21.416Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "4ZQH-VPZD",
+    "date": "2026-08-02T22:53:27.795Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-08-02T22:56:03.672Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T22:56:07.533Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T22:56:14.851Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T22:56:27.225Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T22:56:47.518Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T22:57:19.001Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "5V8N-R4GZ",
+    "date": "2026-08-02T22:57:54.830Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T22:57:55.534Z"
+  },
+  {
+    "type": "subbot",
+    "number": "5491125778333",
+    "event": "pairing_code",
+    "code": "QZB5-9LGZ",
+    "browser": "Linux / Chrome / 147.0.7727.137",
+    "date": "2026-08-02T22:58:10.416Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T22:58:28.974Z"
+  },
+  {
+    "type": "subbot",
+    "number": "5491125778333",
+    "event": "disconnected",
+    "code": 515,
+    "date": "2026-08-02T22:58:38.844Z"
+  },
+  {
+    "type": "subbot",
+    "number": "5491125778333",
+    "event": "connected",
+    "browser": "Linux / Chrome / 147.0.7727.137",
+    "date": "2026-08-02T22:59:13.422Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "XQGX-58TB",
+    "date": "2026-08-02T23:02:07.972Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:02:08.125Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:02:12.507Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:02:21.074Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "QRPV-9AQF",
+    "date": "2026-08-02T23:06:56.564Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-08-02T23:09:33.104Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:09:36.928Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:09:45.938Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:09:58.941Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:10:19.216Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:12:19.993Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "S4T1-JF1N",
+    "date": "2026-08-02T23:12:29.028Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:12:29.889Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "28AG-V2A6",
+    "date": "2026-08-02T23:12:39.500Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:12:39.563Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "2A2K-NKMH",
+    "date": "2026-08-02T23:12:54.512Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:12:55.476Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:13:16.770Z"
+  },
+  {
+    "type": "subbot",
+    "number": "584266752250",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:13:45.314Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:13:50.988Z"
+  },
+  {
+    "type": "subbot",
+    "number": "584266752250",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:13:51.838Z"
+  },
+  {
+    "type": "subbot",
+    "number": "584266752250",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:14:01.624Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:14:55.324Z"
+  },
+  {
+    "type": "subbot",
+    "number": "584266752250",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:14:55.799Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "NSWA-P67S",
+    "date": "2026-08-02T23:15:03.081Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:15:03.121Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:16:02.962Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:16:07.991Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:21:32.758Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:21:37.247Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "PLG4-8KM9",
+    "date": "2026-08-02T23:23:53.372Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "7QCQ-CWK6",
+    "date": "2026-08-02T23:26:41.575Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:27:01.215Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:27:05.915Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:27:13.826Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:27:27.009Z"
+  },
+  {
+    "type": "subbot",
+    "number": "584266752250",
+    "event": "pairing_code",
+    "code": "G9DK-CN9N",
+    "browser": "Mac / Opera / 123.0.5678.91",
+    "date": "2026-08-02T23:27:35.179Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:27:45.204Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-08-02T23:28:45.797Z"
+  },
+  {
+    "type": "subbot",
+    "number": "584266752250",
+    "event": "disconnected",
+    "code": 428,
+    "date": "2026-08-02T23:29:00.080Z"
+  },
+  {
+    "type": "subbot",
+    "number": "584266752250",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:29:09.706Z"
+  },
+  {
+    "type": "subbot",
+    "number": "584266752250",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:29:18.832Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "NE9S-FZST",
+    "date": "2026-08-02T23:29:21.247Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:29:21.447Z"
+  },
+  {
+    "type": "subbot",
+    "number": "584266752250",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:29:31.413Z"
+  },
+  {
+    "type": "subbot",
+    "number": "584266752250",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:29:50.575Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:29:53.174Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:47:11.341Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "C58V-9ERG",
+    "date": "2026-08-02T23:47:19.526Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:47:22.129Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:47:28.990Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:47:41.275Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:48:00.935Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:48:32.678Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-02T23:49:08.371Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 408,
+    "date": "2026-08-02T23:52:29.943Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "AR5L-7NF5",
+    "date": "2026-08-02T23:53:34.082Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "YSQS-PW73",
+    "date": "2026-08-03T23:43:17.125Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 405,
+    "date": "2026-08-03T23:43:19.633Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "disconnected",
+    "code": 401,
+    "date": "2026-08-03T23:43:26.103Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "HJWD-378C",
+    "date": "2026-08-04T00:59:20.377Z"
+  },
+  {
+    "type": "subbot",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "GF4V-K2DQ",
+    "browser": "Linux / Firefox / 142.0.1",
+    "date": "2026-08-04T01:00:01.864Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "8YAR-PT5V",
+    "date": "2026-08-04T01:04:00.944Z"
+  },
+  {
+    "type": "main",
+    "number": "50935729494",
+    "event": "pairing_code",
+    "code": "H1M7-ZFAC",
+    "date": "2026-08-04T01:05:46.882Z"
+  }
+]
