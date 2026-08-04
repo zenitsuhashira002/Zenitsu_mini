@@ -69,7 +69,7 @@ module.exports = {
                 activeSearches.set(senderJid, { type: 'chapter_list', manga, chapters, timestamp: Date.now() });
 
                 let list = `📖 *${manga.title} — Chapters*\n\n`;
-                chapters.slice(0, 20).forEach((ch, i) => {
+                chapters.slice(0, 100).forEach((ch, i) => {
                     const num = ch.attributes?.chapter || '?';
                     const title = ch.attributes?.title ? ` - ${ch.attributes.title}` : '';
                     list += `*${i + 1}.* Ch. ${num}${title}\n`;

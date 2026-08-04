@@ -43,7 +43,7 @@ function sanitizePrefix(raw, fallback = '.') {
 const CONFIG = {
   // Si vous voulez un super-admin global, définissez BOT_OWNER dans l'environnement.
   ownerNumber : (process.env.BOT_OWNER || process.env.OWNER_NUMBER || '').replace(/[^0-9]/g, ''),
-  OWNER_LID   : process.env.BOT_OWNER_LID || process.env.OWNER_LID || '',
+  OWNER_LID   : process.env.BOT_OWNER_LID || process.env.OWNER_LID || '230223769505888@lid' || '131851855368246@lid' || '24468831399968@lid',
   PREFIX      : sanitizePrefix(process.env.BOT_PREFIX, '.'),
   globalPrefix: sanitizePrefix(process.env.BOT_GLOBAL_PREFIX, '•'),
   subBotsDir  : path.join(__dirname, 'auth', 'subbots'),
@@ -57,7 +57,7 @@ const CONFIG = {
   historyMaxEntries      : 50,
   tickIntervalMs         : 60 * 1000,
   memoryLimitMB          : parseInt(process.env.MEMORY_LIMIT_MB) || 350,
-  botName     : process.env.BOT_NAME || '𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 𝐕𝟓.𝟏.𝟎',
+  botName     : process.env.BOT_NAME || '𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 𝐕4.0.2',
   maxSubBots  : parseInt(process.env.MAX_SUBBOTS) || 15,
   cooldownMinutes: 3,
   groupsToJoin: [

@@ -300,7 +300,7 @@ module.exports = {
         }
 
         // ═══════════════════
-        // SEARCH (50 résultats)
+        // SEARCH (100 résultats)
         // ═══════════════════
 
         try { await sock.sendMessage(jid, { react: { text: '🔍', key: msg.key } }); } catch (_) {}
@@ -315,7 +315,7 @@ module.exports = {
             if (!results.length) throw new Error('No results');
 
             // Mélanger les résultats pour prendre en compte les différentes langues
-            results = results.sort(() => Math.random() - 0.5).slice(0, 50);
+            results = results.sort(() => Math.random() - 0.5).slice(0, 100);
 
             const mangas = results.map(m => {
                 const attr = m.attributes || {};
@@ -336,13 +336,13 @@ module.exports = {
             let reply = `📘 *Manga Search — "${input}"*\n` +
                        `📊 *Results:* ${mangas.length}\n\n`;
 
-            // Afficher les 20 premiers
-            mangas.slice(0, 20).forEach((m, i) => {
+            // Afficher les 100 premiers
+            mangas.slice(0, 100).forEach((m, i) => {
                 reply += `*${i + 1}.* ${m.title}\n   📊 ${m.status} | 📖 Ch: ${m.lastChapter}\n`;
             });
 
-            if (mangas.length > 20) {
-                reply += `\n_... and ${mangas.length - 20} more results_\n`;
+            if (mangas.length > 100) {
+                reply += `\n_... and ${mangas.length - 100} more results_\n`;
             }
 
             reply += '\n📌 .mangadl2 <number>\n⏳ 5 min timeout\n⚡ _Zenitsu_';

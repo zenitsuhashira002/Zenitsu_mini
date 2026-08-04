@@ -17,6 +17,19 @@ function getMentionedJid(msg) {
     return mentioned;
 }
 
+function getQuotedSender(msg) {
+    try {
+        const quotedMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+        if (quotedMsg) {
+            const quotedParticipant = msg.message?.extendedTextMessage?.contextInfo?.participant;
+            if (quotedParticipant) return quotedParticipant;
+        }
+        return null;
+    } catch (_) {
+        return null;
+    }
+}
+
 async function getAvatarUrl(sock, jid) {
     try {
         return await sock.profilePictureUrl(jid, 'image');
@@ -25,20 +38,9 @@ async function getAvatarUrl(sock, jid) {
     }
 }
 
-async function getContactName(sock, jid) {
-    try {
-        if (typeof sock.getName === 'function') {
-            const name = await sock.getName(jid);
-            if (name) return name;
-        }
-        if (typeof sock.getContact === 'function') {
-            const contact = await sock.getContact(jid);
-            if (contact && contact.name) return contact.name;
-        }
-        return jid.split('@')[0];
-    } catch (_) {
-        return jid.split('@')[0];
-    }
+function getRawNumber(jid) {
+    if (!jid) return '';
+    return jid.split('@')[0];
 }
 
 module.exports = {
@@ -50,29 +52,35 @@ module.exports = {
         const senderJid = msg.key.participant || msg.key.remoteJid;
         let imageUrl = null;
         let targetJid = null;
-        let targetName = 'Unknown';
 
         // 1. Vérifier si une URL est fournie en argument
         if (args.length > 0 && args[0].startsWith('http')) {
             imageUrl = args[0];
-            targetName = 'User';
+            targetJid = 'user';
         }
 
-        // 2. Vérifier une mention
+        // 2. Vérifier si un message est cité (priorité)
+        if (!imageUrl) {
+            const quotedSender = getQuotedSender(msg);
+            if (quotedSender) {
+                targetJid = quotedSender;
+                imageUrl = await getAvatarUrl(sock, targetJid);
+            }
+        }
+
+        // 3. Vérifier une mention
         if (!imageUrl) {
             const mentioned = getMentionedJid(msg);
             if (mentioned.length > 0) {
                 targetJid = mentioned[0];
                 imageUrl = await getAvatarUrl(sock, targetJid);
-                targetName = await getContactName(sock, targetJid);
             }
         }
 
-        // 3. Utiliser l'utilisateur qui commande
+        // 4. Utiliser l'utilisateur qui commande (seulement si rien d'autre)
         if (!imageUrl) {
             targetJid = senderJid;
-            imageUrl = await getAvatarUrl(sock, senderJid);
-            targetName = await getContactName(sock, senderJid);
+            imageUrl = await getAvatarUrl(sock, targetJid);
         }
 
         if (!imageUrl) {
@@ -82,7 +90,7 @@ module.exports = {
                       '.wasted (uses your profile pic)\n' +
                       '.wasted @user (uses mentioned user\'s pic)\n' +
                       '.wasted <image_url>\n\n' +
-                      '💡 Make sure the target has a profile picture!',
+                      '💡 Reply to a message to use that user\'s profile pic.',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
@@ -117,14 +125,25 @@ module.exports = {
             });
             const buffer = Buffer.from(response.data);
 
+            // Construction du message avec mention
+            const mentionJid = targetJid !== 'user' ? targetJid : null;
+            const mentionList = mentionJid ? [mentionJid] : [];
+
+            let caption = `💀 *Wasted Overlay*\n\n`;
+            if (mentionJid) {
+                caption += `👤 @${getRawNumber(mentionJid)}\n`;
+            }
+            caption += `🪦 *Cause:* ${randomCause}\n` +
+                       `⚰️ *RIP${mentionJid ? ` @${getRawNumber(mentionJid)}` : ''}*\n\n` +
+                       `⚡ _Powered by Cybernova_`;
+
             await sock.sendMessage(jid, {
                 image: buffer,
-                caption: `💀 *Wasted Overlay*\n\n` +
-                         `👤 *Name:* ${targetName}\n` +
-                         `🪦 *Cause:* ${randomCause}\n` +
-                         `⚰️ *RIP ${targetName}*\n\n` +
-                         `⚡ _Powered by Cybernova_`,
-                contextInfo: STYLE,
+                caption: caption,
+                contextInfo: {
+                    mentionedJid: mentionList,
+                    ...STYLE,
+                },
             }, { quoted: msg });
 
             await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } });

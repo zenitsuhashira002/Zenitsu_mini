@@ -1,6 +1,8 @@
+// ./commands/menu.js
 
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 
 // ═══════════════════════════════════════
 // RUNTIME UTILITIES
@@ -20,17 +22,100 @@ function getNumber(jid) {
 }
 
 // ═══════════════════════════════════════
+// DÉTECTION DE L'HEURE (GMT)
+// ═══════════════════════════════════════
+
+function getGreeting() {
+    const now = new Date();
+    // Obtenir l'heure en GMT (UTC)
+    const hours = now.getUTCHours();
+    
+    if (hours >= 5 && hours < 12) {
+        return {
+            emoji: '🌅',
+            text: 'ɢᴏᴏᴅ ᴍᴏʀɴɪɴɢ',
+            color: '🌤️',
+            icon: '☀️'
+        };
+    } else if (hours >= 12 && hours < 17) {
+        return {
+            emoji: '🌤️',
+            text: '𝐺𝑜𝑜𝑑 𝐴𝑓𝑡𝑒𝑟𝑛𝑜𝑜𝑛',
+            color: '☀️',
+            icon: '🌤️'
+        };
+    } else if (hours >= 17 && hours < 21) {
+        return {
+            emoji: '🌅',
+            text: '𝙶𝚘𝚘𝚍 𝙴𝚟𝚎𝚗𝚒𝚗𝚐',
+            color: '🌆',
+            icon: '🌅'
+        };
+    } else {
+        return {
+            emoji: '🌙',
+            text: 'Ⓖⓞⓞⓓ Ⓝⓘⓖⓗⓣ',
+            color: '🌙',
+            icon: '💤'
+        };
+    }
+}
+
+// ═══════════════════════════════════════
+// IMAGES ALÉATOIRES
+// ═══════════════════════════════════════
+
+const MENU_IMAGES = [
+    'https://iili.io/CUixyMJ.jpg',
+    'https://iili.io/CUizcMb.jpg',
+    'https://iili.io/CUinQKQ.jpg',
+    'https://iili.io/CUinNVf.jpg',
+    'https://iili.io/CUiuwx9.jpg',
+    'https://iili.io/CUiuZ0J.jpg'
+];
+
+const FALLBACK_IMAGE = 'https://iili.io/CMfZxsI.jpg';
+
+function getRandomImage() {
+    return MENU_IMAGES[Math.floor(Math.random() * MENU_IMAGES.length)];
+}
+
+async function getWorkingImage() {
+    // Essayer d'abord une image aléatoire
+    const randomImage = getRandomImage();
+    try {
+        const response = await axios.head(randomImage, { timeout: 5000 });
+        if (response.status === 200) {
+            return randomImage;
+        }
+    } catch (_) {
+        // Si l'image aléatoire échoue, essayer les autres
+        for (const img of MENU_IMAGES) {
+            if (img === randomImage) continue;
+            try {
+                const response = await axios.head(img, { timeout: 5000 });
+                if (response.status === 200) {
+                    return img;
+                }
+            } catch (_) {}
+        }
+    }
+    // Fallback
+    return FALLBACK_IMAGE;
+}
+
+// ═══════════════════════════════════════
 // CONFIGURATION
 // ═══════════════════════════════════════
 
 const BOT_INFO = {
-    name: '𝙯𝙚𝙣𝙞𝙩𝙨𝙪 ᗰᎥᑎᎥ',
+    name: '𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢',
     owner: '50935729494',
-    menuImage: 'https://iili.io/CMfZxsI.jpg',
-    menuAudio: 'https://files.catbox.moe/9ypbfk.mpeg', // Updated audio source link
+    menuAudio: 'https://files.catbox.moe/9ypbfk.mpeg',
     channelName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
     channelJid: '120363425394543602@newsletter',
     description: 'ᴄʏʙᴇʀɴᴏᴠᴀ 𝐗 𝙈𝙀𝙏Α',
+    version: '4.0.1',
 };
 
 // ═══════════════════════════════════════
@@ -49,12 +134,19 @@ module.exports = {
             // Gather context parameters
             const senderJid = msg.key.participant || msg.key.remoteJid;
 
+            // Détection de l'heure et salutation
+            const greeting = getGreeting();
             const now = new Date();
             const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
             const date = now.getDate();
             const month = now.toLocaleDateString('en-US', { month: 'long' });
             const year = now.getFullYear();
             const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            
+            // Heure GMT
+            const gmtHours = now.getUTCHours();
+            const gmtMinutes = now.getUTCMinutes();
+            const gmtTime = `${String(gmtHours).padStart(2, '0')}:${String(gmtMinutes).padStart(2, '0')} GMT`;
 
             const uptime = formatUptime(Date.now() - (stats?.startTime || Date.now()));
 
@@ -99,7 +191,7 @@ module.exports = {
                 const sortedCommands = categories[cat].sort();
                 if (!sortedCommands.length) continue;
 
-                menuText += `\n『 ⚡ *${cat.toUpperCase()}* 』\n`;
+                menuText += `\n『 ${greeting.icon} *${cat.toUpperCase()}* 』\n`;
                 menuText += `╭━━━━━━━━━━━━┈⊷\n`;
                 sortedCommands.forEach(cmd => {
                     menuText += `┃ ▸ ${cmd}\n`;
@@ -108,15 +200,17 @@ module.exports = {
             }
 
             if (!menuText) {
-                menuText = `\n『 ⚡ *COMMANDS* 』\n`;
+                menuText = `\n『 ${greeting.icon} *COMMANDS* 』\n`;
                 menuText += `╭━━━━━━━━━━━━┈⊷\n`;
                 menuText += `┃ ▸ No active commands mapped.\n`;
                 menuText += `╰━━━━━━━━━━━━┈⊷\n`;
             }
 
-            // Combine Dashboard metrics
+            // Combine Dashboard metrics avec la salutation
             const caption =
                 `╭━〔 ${BOT_INFO.name} 〕━┈⊷\n` +
+                `┃\n` +
+                `┃  ${greeting.emoji} *${greeting.text}* ${greeting.icon}\n` +
                 `┃\n` +
                 `┃ 📱 *User*: @${getNumber(senderJid)}\n` +
                 `┃ ⚙️  *Mode*: ${config?.MODE || 'public'}\n` +
@@ -124,14 +218,16 @@ module.exports = {
                 `┃ 🔰 *Prefix*: [ ${config?.PREFIX || '.'} ]\n` +
                 `┃ 🤖 *Subbots*: ${subBots?.size || 0}\n` +
                 `┃ 📦 *Cmds*: ${totalLoaded}\n` +
-                `┃ *USE THE "HELP" COMMAND FOR +*\n` +
+                `┃\n` +
                 `┃ 📅 *${dayName}*\n` +
                 `┃ 📆 *${date} ${month} ${year}*\n` +
                 `┃ 🕒 *${time}*\n` +
+                `┃ 🕐 *${gmtTime}*\n` +
                 `┃\n` +
                 `╰━━━━━━━━━━━━━┈⊷` +
                 `\n${menuText}\n` +
-                `> ⚡ ${BOT_INFO.description}\n`;
+                `> ⚡ ${BOT_INFO.description}\n` +
+                `> 📌 v${BOT_INFO.version}\n`;
 
             // Prepare Mentions & Context Styling
             const mentionedJid = [senderJid];
@@ -149,6 +245,17 @@ module.exports = {
             };
 
             // ═══════════════════════════════════════
+            // IMAGE - Sélection aléatoire avec fallback
+            // ═══════════════════════════════════════
+            let menuImage = FALLBACK_IMAGE;
+            try {
+                menuImage = await getWorkingImage();
+                console.log(`✅ Menu image selected: ${menuImage}`);
+            } catch (err) {
+                console.log(`⚠️ Using fallback image: ${FALLBACK_IMAGE}`);
+            }
+
+            // ═══════════════════════════════════════
             // DISPATCH
             // ═══════════════════════════════════════
             let sent = false;
@@ -156,7 +263,7 @@ module.exports = {
             // Try rendering Menu Image with text caption layout
             try {
                 await sock.sendMessage(jid, {
-                    image: { url: BOT_INFO.menuImage },
+                    image: { url: menuImage },
                     caption: caption,
                     contextInfo: contextStyle
                 }, { quoted: msg });
@@ -164,6 +271,7 @@ module.exports = {
             } catch (imgErr) {
                 console.log('⚠️ Menu graphic rendering error, changing execution to text-only...');
             }
+
             // Send Audio Stream (PTT)
             try {
                 await sock.sendMessage(jid, {
@@ -173,9 +281,7 @@ module.exports = {
                 }, { quoted: msg });
             } catch (audioErr) {
                 console.log('⚠️ Menu audio unavailable, bypassing audio delivery.');
-                console.log(audioErr);
             }
-
 
             // Dynamic textual dispatch fallback if image fails
             if (!sent) {
@@ -188,11 +294,14 @@ module.exports = {
         } catch (e) {
             console.error('❌ CRITICAL MENU ENGINE ERROR:', e.message || e);
 
-            // Ultimate text-only fallback to avoid runtime freezes
+            // Ultimate text-only fallback
             try {
+                const greeting = getGreeting();
                 await sock.sendMessage(jid, {
                     text:
                         `╭━━〔 ⚡ ${BOT_INFO.name} ⚡ 〕━━┈⊷\n` +
+                        `┃\n` +
+                        `┃  ${greeting.emoji} *${greeting.text}* ${greeting.icon}\n` +
                         `┃\n` +
                         `┃  📡 *Status* : 🟢 Operational\n` +
                         `┃  🔰 *Prefix* : [ . ]\n` +

@@ -96,7 +96,7 @@ module.exports = {
                 return sock.sendMessage(jid, {
                     text:
                         '🆔 *JID Info*\n\n' +
-                        `📱 *Input:* ${input}\n` +
+                        `📱 *Input:* ${input}@lid\n` +
                         `🏷️ *Type:* ${resultType}\n` +
                         `🆔 *JID:* \`${resultJid}\`\n\n` +
                         '⚡ _Zenitsu_',
