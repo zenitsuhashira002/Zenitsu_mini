@@ -3,48 +3,55 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-// 📁 Configuration des chemins
+
+// ═══════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════
+
 const WELCOME_FILE = path.join(process.cwd(), 'database', 'welcome.json');
 
-// 📁 Créer dossier + fichier si inexistant
 const dbDir = path.join(process.cwd(), 'database');
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 if (!fs.existsSync(WELCOME_FILE)) fs.writeFileSync(WELCOME_FILE, '{}');
 
-// 🔁 Fonctions de lecture/sauvegarde avec gestion d'erreurs
 function getWelcome() {
-    try {
-        return JSON.parse(fs.readFileSync(WELCOME_FILE, 'utf8'));
-    } catch (err) {
-        console.error('❌ Error reading welcome.json:', err);
-        return {};
-    }
+    try { return JSON.parse(fs.readFileSync(WELCOME_FILE, 'utf8')); }
+    catch (err) { return {}; }
 }
 
 function saveWelcome(data) {
-    try {
-        fs.writeFileSync(WELCOME_FILE, JSON.stringify(data, null, 2));
-    } catch (err) {
-        console.error('❌ Error saving welcome.json:', err);
-    }
+    try { fs.writeFileSync(WELCOME_FILE, JSON.stringify(data, null, 2)); }
+    catch (err) { console.error('❌ Error saving welcome.json:', err); }
 }
 
-// 🎲 Backgrounds pour la carte de bienvenue
-const WELCOME_BACKGROUNDS = [
-    'https://iili.io/CSuZmH7.jpg',
-    'https://iili.io/CSuZGcB.jpg',
-    'https://iili.io/CSuZqjs.jpg',
-    'https://iili.io/CSut9Du.jpg',
-    'https://iili.io/CSutBHP.jpg',
-    'https://iili.io/CSutoDg.jpg',
-    'https://iili.io/CSutTiv.jpg',
-    'https://iili.io/CSut5UN.jpg',
-    'https://iili.io/CSutW0l.jpg',
-    'https://iili.io/CSutP5P.jpg',
-    'https://iili.io/CSutsmF.jpg'
-];
+// ═══════════════════════════════════════
+// JID UTILS
+// ═══════════════════════════════════════
 
-// 🎲 Fallback backgrounds si l'API Popcat échoue
+function getRawNumber(jid) {
+    if (!jid) return '';
+    let num = jid.split('@')[0];
+    num = num.split(':')[0];
+    return num.trim();
+}
+
+function isOwner(sock, senderJid) {
+    if (!senderJid) return false;
+    const senderRaw = getRawNumber(senderJid);
+    const botIds = [];
+    if (sock.user?.id) botIds.push(getRawNumber(sock.user.id));
+    if (sock.user?.lid) botIds.push(getRawNumber(sock.user.lid));
+    botIds.push(process.env.OWNER_NUMBER || '50935729494');
+    if (global.subBots instanceof Map) {
+        for (const [num] of global.subBots) botIds.push(getRawNumber(num));
+    }
+    return botIds.includes(senderRaw);
+}
+
+// ═══════════════════════════════════════
+// ASSETS
+// ═══════════════════════════════════════
+
 const FALLBACK_IMAGES = [
     'https://files.catbox.moe/jcf2qc.jpg',
     'https://files.catbox.moe/tz07yl.jpg',
@@ -59,55 +66,18 @@ const FALLBACK_IMAGES = [
     'https://iili.io/Bsd6h21.jpg',
     'https://iili.io/BsdsRrN.jpg',
     'https://iili.io/BsdGUHF.jpg',
-    'https://iili.io/CY3iYba.jpg',
-    'https://iili.io/CY3igd7.jpg',
-    'https://iili.io/CY3sB2I.jpg',
-    'https://iili.io/CY3s542.jpg',
-    'https://iili.io/CY3sNv1.jpg',
-    'https://iili.io/CY3sgGR.jpg',
-    'https://iili.io/CY3LHaS.jpg',
-    'https://iili.io/CY3LFwu.jpg',
-    'https://iili.io/CY3LRta.jpg',
-    'https://files.catbox.moe/8s31s2.jpg',
-    'https://files.catbox.moe/48pqbp.jpg',
-    'https://files.catbox.moe/ufzn87.jpg',
-    'https://files.catbox.moe/718prk.jpg',
-    'https://files.catbox.moe/3c33kh.jpg',
     'https://files.catbox.moe/verxnu.jpg',
-    'https://iili.io/CUPd0qF.jpg',
-    'https://iili.io/CUPHoIS.jpg',
-    'https://iili.io/CU6bnaV.jpg',
-    'https://iili.io/CU6tzlV.jpg',
-    'https://iili.io/CU6ZrMv.jpg',
-    'https://files.catbox.moe/noph7e.jpg'
+    'https://files.catbox.moe/noph7e.jpg',
 ];
 
 const DEFAULT_AVATAR = 'https://iili.io/CSAJ38v.jpg';
-
-// 🔀 Fonctions utilitaires
-function getRandomBackground() {
-    return WELCOME_BACKGROUNDS[Math.floor(Math.random() * WELCOME_BACKGROUNDS.length)];
-}
 
 function getRandomFallback() {
     return FALLBACK_IMAGES[Math.floor(Math.random() * FALLBACK_IMAGES.length)];
 }
 
-// 🔒 Anti-spam : cache des derniers messages envoyés
-const lastWelcomeSent = new Map();
-
-// Nettoyer périodiquement le cache
-setInterval(() => {
-    const now = Date.now();
-    for (const [key, timestamp] of lastWelcomeSent) {
-        if (now - timestamp > 300000) { // 5 minutes
-            lastWelcomeSent.delete(key);
-        }
-    }
-}, 60000);
-
 // ═══════════════════════════════════════
-// STYLE CYBERNOVA
+// STYLE
 // ═══════════════════════════════════════
 
 const STYLE = {
@@ -121,340 +91,326 @@ const STYLE = {
 };
 
 // ═══════════════════════════════════════
-// GÉNÉRATION DE LA CARTE DE BIENVENUE
+// ANTI-SPAM
 // ═══════════════════════════════════════
 
-async function generateWelcomeCard(sock, groupId, userJid, groupName, memberCount) {
+const lastWelcomeSent = new Map();
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, timestamp] of lastWelcomeSent) {
+        if (now - timestamp > 300000) lastWelcomeSent.delete(key);
+    }
+}, 60000);
+
+// ═══════════════════════════════════════
+// SEND WELCOME CARD (Popcat API)
+// ═══════════════════════════════════════
+
+async function sendWelcomeCard(sock, groupId, userJid, groupName, memberCount) {
     try {
-        // Récupérer l'avatar de l'utilisateur
         let avatarUrl = DEFAULT_AVATAR;
-        try {
-            avatarUrl = await sock.profilePictureUrl(userJid, 'image');
-        } catch (_) {
-            // Utiliser l'avatar par défaut
-        }
+        try { avatarUrl = await sock.profilePictureUrl(userJid, 'image'); } catch (_) {}
 
-        // Récupérer le nom de l'utilisateur
-        let userName = 'User';
-        try {
-            const contact = await sock.getContact?.(userJid);
-            if (contact?.name) {
-                userName = contact.name;
-            } else {
-                const metadata = await sock.groupMetadata(groupId);
-                const participant = metadata.participants.find(p => p.id === userJid);
-                if (participant?.name) {
-                    userName = participant.name;
-                } else {
-                    userName = userJid.split('@')[0];
-                }
-            }
-        } catch (_) {
-            userName = userJid.split('@')[0];
-        }
+        const backgrounds = [
+            'https://iili.io/CSuZmH7.jpg',
+            'https://iili.io/CSuZGcB.jpg',
+            'https://iili.io/CSuZqjs.jpg',
+            'https://iili.io/CSut9Du.jpg',
+            'https://iili.io/CSutBHP.jpg',
+            'https://iili.io/CSutoDg.jpg',
+            'https://iili.io/CSutTiv.jpg',
+            'https://iili.io/CSut5UN.jpg',
+        ];
+        const background = backgrounds[Math.floor(Math.random() * backgrounds.length)];
 
-        // Choisir un background aléatoire
-        const background = getRandomBackground();
-
-        // Construire l'URL de l'API Popcat
         const apiUrl = `https://api.popcat.xyz/v2/welcomecard?` +
-                       `background=${encodeURIComponent(background)}` +
-                       `&text1=User` +
-                       `&text2=${encodeURIComponent(`Welcome to ${groupName}`)}` +
-                       `&text3=${encodeURIComponent(`Member ${memberCount}`)}` +
-                       `&avatar=${encodeURIComponent(avatarUrl)}`;
-
-        console.log(`📤 Welcome card URL: ${apiUrl}`);
+            `background=${encodeURIComponent(background)}` +
+            `&text1=User&text2=${encodeURIComponent(`Welcome to ${groupName}`)}` +
+            `&text3=${encodeURIComponent(`Member ${memberCount}`)}` +
+            `&avatar=${encodeURIComponent(avatarUrl)}`;
 
         const response = await axios.get(apiUrl, {
             responseType: 'arraybuffer',
             timeout: 30000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; ZenitsuBot/1.0)',
-            },
+            headers: { 'User-Agent': 'Mozilla/5.0' },
         });
 
-        return {
-            success: true,
-            buffer: Buffer.from(response.data),
-            userName,
-            avatarUrl,
-        };
+        const buffer = Buffer.from(response.data);
+        if (buffer.length > 500) {
+            await sock.sendMessage(groupId, {
+                image: buffer,
+                caption:
+                    `✮ *Welcome!* ✮\n\n` +
+                    `👤 @${userJid.split('@')[0].split(':')[0]}\n` +
+                    `📢 ${groupName}\n` +
+                    `👥 Members: ${memberCount}\n\n` +
+                    '⚡ _Powered by Cybernova_',
+                contextInfo: { mentionedJid: [userJid], ...STYLE },
+            });
+            return true;
+        }
     } catch (err) {
-        console.error('❌ Welcome card generation failed:', err.message);
-        return { success: false, error: err.message };
+        console.log('⚠️ Welcome card failed:', err.message);
     }
+    return false;
 }
 
 // ═══════════════════════════════════════
-// ENVOI DE MESSAGE DE BIENVENUE FALLBACK
+// SEND FALLBACK WELCOME
 // ═══════════════════════════════════════
 
 async function sendFallbackWelcome(sock, groupId, userJid, groupName, memberCount) {
     try {
-        const userName = userJid.split('@')[0];
+        const userName = userJid.split('@')[0].split(':')[0];
         const randomImage = getRandomFallback();
-        const isVideo = randomImage.endsWith('.mp4');
 
-        const caption = `╭━━❲ *𝚆𝚎𝚕𝚌𝚘𝚖𝚎* ❳━━╮\n` +
-                       `┃\n` +
-                       `┃ ✮ @${userName}\n` +
-                       `┃ *${groupName}*\n` +
-                       `┃\n` +
-                       `┃ 👥 Member: ${memberCount}\n` +
-                       `┃ 🤖 Bot: 𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 𝐕𝟒.𝟎.𝟏\n` +
-                       `┃\n` +
-                       `┃ ⚡ Respect all admins\n` +
-                       `┃ 📢 Follow our channel\n` +
-                       `┃ 𝑼𝒔𝒆 *.𝒘𝒆𝒍𝒄𝒐𝒎𝒆* 𝒐𝒇𝒇 𝒕𝒐 𝒅𝒊𝒔𝒂𝒃𝒍𝒆 𝒕𝒉𝒊𝒔 𝒆𝒗𝒆𝒏𝒕\n` +
-                       `╰━━━━━━━━━━━━━━━━━━╯\n\n` +
-                       `© 𝙋𝙤𝙬𝙚𝙧𝙚𝙙 𝙗𝙮 𝙘𝙮𝙗𝙚𝙧𝙣𝙤𝙫𝘼`;
-
-        const contextInfo = {
-            mentionedJid: [userJid],
-            ...STYLE,
-        };
-
-        if (isVideo) {
-            await sock.sendMessage(groupId, {
-                video: { url: randomImage },
-                caption,
-                contextInfo,
-            });
-        } else {
-            await sock.sendMessage(groupId, {
-                image: { url: randomImage },
-                caption,
-                contextInfo,
-            });
-        }
-
+        await sock.sendMessage(groupId, {
+            image: { url: randomImage },
+            caption:
+                `╭━━❲ *WELCOME* ❳━━╮\n` +
+                `┃\n` +
+                `┃ ✮ @${userName}\n` +
+                `┃ *${groupName}*\n` +
+                `┃\n` +
+                `┃ 👥 Member: ${memberCount}\n` +
+                `┃ ⚡ Respect all admins\n` +
+                `┃ 📢 Follow our channel\n` +
+                `╰━━━━━━━━━━━━━━━━━━╯\n\n` +
+                '© 𝙋𝙤𝙬𝙚𝙧𝙚𝙙 𝙗𝙮 𝙘𝙮𝙗𝙚𝙧𝙣𝙤𝙫𝘼',
+            contextInfo: { mentionedJid: [userJid], ...STYLE },
+        });
         return true;
     } catch (err) {
-        console.error('❌ Fallback welcome failed:', err.message);
-        return false;
+        console.log('⚠️ Fallback welcome failed:', err.message);
     }
+    return false;
 }
 
 // ═══════════════════════════════════════
-// ENVOI DE MESSAGE TEXT SIMPLE
+// SEND TEXT WELCOME
 // ═══════════════════════════════════════
 
 async function sendTextWelcome(sock, groupId, userJid, groupName, memberCount) {
     try {
-        const userName = userJid.split('@')[0];
-
-        const text = `✮ *ᴡᴇʟᴄᴏᴍᴇ @${userName}😁*\n${groupName.toUpperCase()}* ✮\n\n` +
-                    `👥 *Members:* ${memberCount}\n` +
-                    `🤖 *Bot: 𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 𝐕𝟒.𝟎.𝟏*\n\n` +
-                    `⚡ *Rules:*\n` +
-                    `• 𝙍𝙚𝙨𝙥𝙚𝙘𝙩 𝙖𝙡𝙡 𝙢𝙚𝙢𝙗𝙚𝙧𝙨\n` +
-                    `• 𝙉𝙤 𝙨𝙥𝙖𝙢 𝙤𝙧 𝙉𝙎𝙁𝙒\n` +
-                    `• 𝙁𝙤𝙡𝙡𝙤𝙬 𝙖𝙙𝙢𝙞𝙣𝙨' 𝙞𝙣𝙨𝙩𝙧𝙪𝙘𝙩𝙞𝙤𝙣𝙨 𝙣 𝙛𝙤𝙡𝙡𝙤𝙬 𝙤𝙪𝙧 𝙘𝙝𝙖𝙣𝙣𝙚𝙡\n\n` +
-                    ` 𝑼𝒔𝒆 *.𝒘𝒆𝒍𝒄𝒐𝒎𝒆* 𝒐𝒇𝒇 𝒕𝒐 𝒅𝒊𝒔𝒂𝒃𝒍𝒆 𝒕𝒉𝒊𝒔 𝒆𝒗𝒆𝒏𝒕` +
-                    `© 𝙋𝙤𝙬𝙚𝙧𝙚𝙙 𝙗𝙮 𝙘𝙮𝙗𝙚𝙧𝙣𝙤𝙫𝘼`;
+        const userName = userJid.split('@')[0].split(':')[0];
 
         await sock.sendMessage(groupId, {
-            text,
-            contextInfo: {
-                mentionedJid: [userJid],
-                ...STYLE,
-            },
+            text:
+                `✮ *Welcome @${userName}!* ✮\n` +
+                `📢 ${groupName}\n` +
+                `👥 Members: ${memberCount}\n\n` +
+                '⚡ *Rules:*\n' +
+                '• Respect all members\n' +
+                '• No spam or NSFW\n' +
+                '• Follow admins\' instructions\n\n' +
+                '© 𝙋𝙤𝙬𝙚𝙧𝙚𝙙 𝙗𝙮 𝙘𝙮𝙗𝙚𝙧𝙣𝙤𝙫𝘼',
+            contextInfo: { mentionedJid: [userJid], ...STYLE },
         });
-
         return true;
-    } catch (err) {
-        console.error('❌ Text welcome failed:', err.message);
-        return false;
-    }
+    } catch (_) {}
+    return false;
 }
 
 // ═══════════════════════════════════════
-// 🎉 EVENT WELCOME
+// EVENT
 // ═══════════════════════════════════════
 
 async function welcomeEvent(sock, update) {
     try {
         const { id, participants, action } = update;
-
-        if (!id || !participants || !action) return;
+        if (!id || !participants || action !== 'add') return;
 
         const db = getWelcome();
-
-        // Si désactivé pour ce groupe
         if (db[id] === false) return;
 
-        if (action === 'add') {
-            // Récupérer les métadonnées du groupe
-            let metadata;
-            try {
-                metadata = await sock.groupMetadata(id);
-            } catch (err) {
-                console.error('❌ Error fetching group metadata:', err.message);
-                return;
-            }
+        let metadata;
+        try { metadata = await sock.groupMetadata(id); } catch (_) { return; }
+        if (!metadata) return;
 
-            if (!metadata) return;
+        const groupName = metadata.subject || 'Group';
+        const memberCount = metadata.participants?.length || 0;
 
-            const groupName = metadata.subject || 'Group';
-            const memberCount = metadata.participants ? metadata.participants.length : 0;
+        for (let user of participants) {
+            const jid = typeof user === 'string' ? user : user.id;
+            if (!jid) continue;
 
-            for (let user of participants) {
-                const jid = typeof user === 'string' ? user : user.id;
-                if (!jid) continue;
+            const cacheKey = `${id}_${jid}`;
+            const lastTime = lastWelcomeSent.get(cacheKey);
+            if (lastTime && Date.now() - lastTime < 10000) continue;
+            lastWelcomeSent.set(cacheKey, Date.now());
 
-                // 🔒 Anti-spam
-                const cacheKey = `${id}_${jid}`;
-                const lastTime = lastWelcomeSent.get(cacheKey);
-                if (lastTime && Date.now() - lastTime < 10000) {
-                    continue;
-                }
-                lastWelcomeSent.set(cacheKey, Date.now());
+            let sent = false;
 
-                let sent = false;
+            sent = await sendWelcomeCard(sock, id, jid, groupName, memberCount);
+            if (!sent) sent = await sendFallbackWelcome(sock, id, jid, groupName, memberCount);
+            if (!sent) await sendTextWelcome(sock, id, jid, groupName, memberCount);
 
-                // 1. Essayer avec la carte de bienvenue Popcat
-                try {
-                    const cardResult = await generateWelcomeCard(sock, id, jid, groupName, memberCount);
-                    if (cardResult.success && cardResult.buffer) {
-                        await sock.sendMessage(id, {
-                            image: cardResult.buffer,
-                            caption: `✮ *𝗪𝗲𝗹𝗰𝗼𝗺𝗲* ✮\n\n` +
-                                     `👤 @${cardResult.userName || jid.split('@')[0]}\n` +
-                                     `📢 ${groupName}\n` +
-                                     `👥 𝗠𝗲𝗺𝗯𝗲𝗿𝘀 : ${memberCount}\n` +
-                                     `𝑼𝒔𝒆 *.𝒘𝒆𝒍𝒄𝒐𝒎𝒆 𝒐𝒇𝒇* 𝒕𝒐 𝒅𝒊𝒔𝒂𝒃𝒍𝒆 𝒕𝒉𝒊𝒔 𝒆𝒗𝒆𝒏𝒕*`,
-                            contextInfo: {
-                                mentionedJid: [jid],
-                                ...STYLE,
-                            },
-                        });
-                        sent = true;
-                        console.log(`✅ Welcome card sent for ${jid}`);
-                    }
-                } catch (err) {
-                    console.log(`⚠️ Popcat welcome failed: ${err.message}`);
-                }
-
-                // 2. Fallback avec image/vidéo
-                if (!sent) {
-                    try {
-                        sent = await sendFallbackWelcome(sock, id, jid, groupName, memberCount);
-                        if (sent) console.log(`✅ Fallback welcome sent for ${jid}`);
-                    } catch (err) {
-                        console.log(`⚠️ Fallback welcome failed: ${err.message}`);
-                    }
-                }
-
-                // 3. Fallback text simple
-                if (!sent) {
-                    try {
-                        sent = await sendTextWelcome(sock, id, jid, groupName, memberCount);
-                        if (sent) console.log(`✅ Text welcome sent for ${jid}`);
-                    } catch (err) {
-                        console.log(`⚠️ Text welcome failed: ${err.message}`);
-                    }
-                }
-
-                // Pause entre les membres
-                await new Promise(res => setTimeout(res, 2000));
-            }
+            await new Promise(r => setTimeout(r, 2000));
         }
-
     } catch (err) {
-        console.error('❌ Welcome event error:', err.message || err);
+        console.error('❌ Welcome event error:', err.message);
     }
 }
 
 // ═══════════════════════════════════════
-// ⚙️ COMMANDE WELCOME
+// COMMAND
 // ═══════════════════════════════════════
 
 async function welcomeCommand(sock, msg, args, jid) {
     try {
-        // Seulement dans les groupes
-        if (!jid.endsWith('@g.us')) {
+        const senderJid = msg.key?.participant || msg.key?.remoteJid;
+        const isGroup = jid.endsWith('@g.us');
+
+        if (!isGroup) {
             return sock.sendMessage(jid, {
                 text: '❌ This command only works in groups.',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
 
-        const option = args[0]?.toLowerCase();
+        const subCommand = args[0]?.toLowerCase();
+        const secondArg = args[1]?.toLowerCase();
         const db = getWelcome();
 
-        // Activer/Désactiver welcome
-        if (option === 'on') {
+        // ═══════════════════
+        // OFF ALL (Owner/Bot only)
+        // ═══════════════════
+
+        if (subCommand === 'off' && secondArg === 'all') {
+            if (!isOwner(sock, senderJid)) {
+                return sock.sendMessage(jid, {
+                    text: '🚫 *Owner only!*\n\nOnly the bot owner can disable welcome for ALL groups.',
+                    contextInfo: STYLE,
+                }, { quoted: msg });
+            }
+
+            const allChats = await sock.groupFetchAllParticipating();
+            let count = 0;
+            for (const gid of Object.keys(allChats)) {
+                if (db[gid] !== false) {
+                    db[gid] = false;
+                    count++;
+                }
+            }
+            saveWelcome(db);
+
+            return sock.sendMessage(jid, {
+                text:
+                    '❌ *Welcome Disabled — All Groups*\n\n' +
+                    `📊 *Groups affected:* ${count}\n` +
+                    '📢 Welcome messages are now OFF for all groups.\n\n' +
+                    '💡 Use *.welcome on* to re-enable per group.\n\n' +
+                    '⚡ _Zenitsu_',
+                contextInfo: STYLE,
+            }, { quoted: msg });
+        }
+
+        // ═══════════════════
+        // ON ALL (Owner/Bot only)
+        // ═══════════════════
+
+        if (subCommand === 'on' && secondArg === 'all') {
+            if (!isOwner(sock, senderJid)) {
+                return sock.sendMessage(jid, {
+                    text: '🚫 *Owner only!*\n\nOnly the bot owner can enable welcome for ALL groups.',
+                    contextInfo: STYLE,
+                }, { quoted: msg });
+            }
+
+            const allChats = await sock.groupFetchAllParticipating();
+            let count = 0;
+            for (const gid of Object.keys(allChats)) {
+                if (db[gid] !== true) {
+                    db[gid] = true;
+                    count++;
+                }
+            }
+            saveWelcome(db);
+
+            return sock.sendMessage(jid, {
+                text:
+                    '✅ *Welcome Enabled — All Groups*\n\n' +
+                    `📊 *Groups affected:* ${count}\n` +
+                    '📢 Welcome messages are now ON for all groups.\n\n' +
+                    '⚡ _Zenitsu_',
+                contextInfo: STYLE,
+            }, { quoted: msg });
+        }
+
+        // ═══════════════════
+        // ON (single group)
+        // ═══════════════════
+
+        if (subCommand === 'on') {
             db[jid] = true;
             saveWelcome(db);
             return sock.sendMessage(jid, {
-                text: `✅ *Welcome System Enabled*\n\n` +
-                      `📢 This group will now receive welcome messages.\n` +
-                      `⚡ _Powered by Cybernova_`,
+                text:
+                    '✅ *Welcome Enabled*\n\n' +
+                    '📢 Welcome messages are now ON for this group.\n\n' +
+                    '💡 *Tip:* .welcome off all to disable everywhere.\n\n' +
+                    '⚡ _Zenitsu_',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
 
-        if (option === 'off') {
+        // ═══════════════════
+        // OFF (single group)
+        // ═══════════════════
+
+        if (subCommand === 'off') {
             db[jid] = false;
             saveWelcome(db);
             return sock.sendMessage(jid, {
-                text: `❌ *Welcome System Disabled*\n\n` +
-                      `📢 Welcome messages are now turned off.\n` +
-                      `⚡ _Powered by Cybernova_`,
+                text:
+                    '❌ *Welcome Disabled*\n\n' +
+                    '📢 Welcome messages are now OFF for this group.\n\n' +
+                    '💡 *Tip:* .welcome off all to disable everywhere.\n\n' +
+                    '⚡ _Zenitsu_',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
 
-        // Afficher le statut
-        const status = db[jid] === false ? '❌ DISABLED' : '✅ ENABLED';
+        // ═══════════════════
+        // STATUS
+        // ═══════════════════
+
+        const status = db[jid] === false ? '❌ OFF' : '✅ ON';
         const prefix = global.PREFIX || '.';
 
-        // Récupérer les métadonnées pour plus d'infos
         let metadata;
-        try {
-            metadata = await sock.groupMetadata(jid);
-        } catch (_) {}
-
-        const groupName = metadata?.subject || 'Unknown Group';
+        try { metadata = await sock.groupMetadata(jid); } catch (_) {}
+        const groupName = metadata?.subject || 'Unknown';
         const memberCount = metadata?.participants?.length || '?';
 
-        await sock.sendMessage(jid, {
-            text: `╭━━━━❲ *WELCOME SYSTEM* ❳━━━━╮\n` +
-                  `┃\n` +
-                  `┃  📢 *Group:* ${groupName}\n` +
-                  `┃  👥 *Members:* ${memberCount}\n` +
-                  `┃  ⚙️ *Status:* ${status}\n` +
-                  `┃\n` +
-                  `┃  📌 *Commands:*\n` +
-                  `┃  ${prefix}welcome on  = Enable\n` +
-                  `┃  ${prefix}welcome off = Disable\n` +
-                  `┃\n` +
-                  `┃  ✨ *Features:*\n` +
-                  `┃  • Custom welcome cards\n` +
-                  `┃  • Member count display\n` +
-                  `┃  • Auto-fallback system\n` +
-                  `┃\n` +
-                  `╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯\n\n` +
-                  `© 𝙋𝙤𝙬𝙚𝙧𝙚𝙙 𝙗𝙮 𝙘𝙮𝙗𝙚𝙧𝙣𝙤𝙫𝘼`,
+        return sock.sendMessage(jid, {
+            text:
+                `╭━━━━❲ *WELCOME SYSTEM* ❳━━━━╮\n` +
+                `┃\n` +
+                `┃  📢 *Group:* ${groupName}\n` +
+                `┃  👥 *Members:* ${memberCount}\n` +
+                `┃  ⚙️ *Status:* ${status}\n` +
+                `┃\n` +
+                `┃  📌 *Commands:*\n` +
+                `┃  ${prefix}welcome on\n` +
+                `┃  ${prefix}welcome off\n` +
+                `┃  ${prefix}welcome on all (owner)\n` +
+                `┃  ${prefix}welcome off all (owner)\n` +
+                `┃\n` +
+                `╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯\n\n` +
+                '© 𝙋𝙤𝙬𝙚𝙧𝙚𝙙 𝙗𝙮 𝙘𝙮𝙗𝙚𝙧𝙣𝙤𝙫𝘼',
             contextInfo: STYLE,
         }, { quoted: msg });
 
     } catch (err) {
-        console.error('❌ Welcome command error:', err.message || err);
+        console.error('❌ Welcome command error:', err.message);
     }
 }
 
-// ═══════════════════════════════════════
-// 📤 EXPORTS POUR LE CHARGEUR
-// ═══════════════════════════════════════
-
 module.exports = {
-    // Pour le chargeur d'événements
     event: 'group-participants.update',
     execute: welcomeEvent,
-
-    // Pour le chargeur de commandes
     name: 'welcome',
     command: welcomeCommand,
 };

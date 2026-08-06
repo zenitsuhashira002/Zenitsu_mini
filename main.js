@@ -1,3 +1,4 @@
+
 'use strict';
 // ╔══════════════════════════════════════════════════════════════╗
 // ║         ZENITSU BOT — main.js (CommonJS) v5.1.0             ║
@@ -41,9 +42,12 @@ function sanitizePrefix(raw, fallback = '.') {
 //    Le premier owner sera ajouté dynamiquement par le bot lui‑même.
 // ═══════════════════════════════════════════════════════════════
 const CONFIG = {
-  // Si vous voulez un super-admin global, définissez BOT_OWNER dans l'environnement.
+  // Si vous voulez un super-admin global, définissez BOT_OWNER/BOT_OWNER_LID dans l'environnement.
+  // 🔥 CORRIGÉ : plus aucun LID codé en dur par défaut. Sans variable d'env,
+  //    ce champ reste vide — chaque bot n'a que SES PROPRES owners, jamais
+  //    un LID d'un tiers imposé globalement (c'était le bug racine).
   ownerNumber : (process.env.BOT_OWNER || process.env.OWNER_NUMBER || '').replace(/[^0-9]/g, ''),
-  OWNER_LID   : process.env.BOT_OWNER_LID || process.env.OWNER_LID || '230223769505888@lid' || '131851855368246@lid' || '24468831399968@lid',
+  OWNER_LID   : process.env.BOT_OWNER_LID || process.env.OWNER_LID || '',
   PREFIX      : sanitizePrefix(process.env.BOT_PREFIX, '.'),
   globalPrefix: sanitizePrefix(process.env.BOT_GLOBAL_PREFIX, '•'),
   subBotsDir  : path.join(__dirname, 'auth', 'subbots'),
@@ -267,7 +271,14 @@ function getOwnerSet(sock, key) {
   return set;
 }
 
-function isBotOwner(sock, key, senderJid) {
+function isBotOwner(sock, key, senderJid, msg = null) {
+  // 🔥 CORRECTIF OWNER (le plus important) : un message avec fromMe === true
+  // ne peut venir QUE du compte lié au bot lui-même (garantie Baileys/WhatsApp).
+  // C'est donc TOUJOURS le vrai propriétaire, peu importe la forme du JID
+  // (PN vs LID) que WhatsApp a choisi d'exposer pour ce message précis.
+  // Ça corrige à la racine le cas "le linker de son propre bot ne peut pas
+  // utiliser mode/setprefix" sans dépendre d'un matching de chaîne fragile.
+  if (msg?.key?.fromMe === true) return true;
   return getOwnerSet(sock, key).has(normalizeJid(senderJid));
 }
 
@@ -283,7 +294,7 @@ function getMainBotKey() {
   if (mainBotKey && bots.has(mainBotKey) && bots.get(mainBotKey).connected) {
     return mainBotKey;
   }
-  
+
   // Sinon, prend le premier bot connecté
   for (const [key, bot] of bots.entries()) {
     if (bot.connected) {
@@ -294,7 +305,7 @@ function getMainBotKey() {
       return key;
     }
   }
-  
+
   return null;
 }
 
@@ -306,12 +317,12 @@ function setMainBot(key) {
       persistBotState(k);
     }
   }
-  
+
   mainBotKey = key;
   const st = ensureBotState(key);
   st.isMain = true;
   persistBotState(key);
-  
+
   info(`👑 Main bot (affichage) : ${key}`);
 }
 
@@ -763,6 +774,24 @@ async function connectBot(number, { requesterJid = null } = {}) {
             stNow.lastKeepAliveAt = Date.now();
             stNow.lastRestart     = Date.now();
 
+            // 🔥 CORRECTIF OWNER : capture et persiste définitivement l'identité
+            // réelle (PN + LID) de la personne qui vient de lier ce bot. Cela
+            // survit même si sock.user.lid redevient temporairement absent
+            // lors d'une reconnexion ultérieure — l'identité est figée ici.
+            let ownerCaptured = false;
+            if (sock.user?.id) {
+              const pnJid = normalizeJid(sock.user.id);
+              if (pnJid && !stNow.owners.has(pnJid)) { stNow.owners.add(pnJid); ownerCaptured = true; }
+            }
+            if (sock.user?.lid) {
+              const lidJid = normalizeJid(sock.user.lid);
+              if (lidJid && !stNow.owners.has(lidJid)) { stNow.owners.add(lidJid); ownerCaptured = true; }
+            }
+            if (ownerCaptured) {
+              persistBotState(key);
+              info(`👑 Owner capturé automatiquement pour ${cleanNumber} (PN+LID persistés).`);
+            }
+
             notifyWebInterface('subbot_connected', {
               number: cleanNumber,
               mode: stNow.mode,
@@ -1062,12 +1091,31 @@ async function handleUniversal(sock, msg, text, jid, senderJid, key) {
   const lower = text.trim().toLowerCase();
   const args  = text.trim().split(/\s+/);
   const state = ensureBotState(key);
-  const ownerOk = () => isBotOwner(sock, key, senderJid);
+  const ownerOk = () => isBotOwner(sock, key, senderJid, msg);
 
   if (args[0]?.toLowerCase() === 'addowner') {
-    if (!ownerOk()) { await reactTo(sock, jid, msg, '🚫'); return true; }
     const num = resolveTargetNumberFromMention(msg, args);
     if (!num) { await reactTo(sock, jid, msg, '❌'); return true; }
+
+    // 🔥 AUTO-REVENDICATION : si le numéro ciblé est EXACTEMENT celui de CE bot
+    // (ex: bot 50912345678, commande "addowner 50912345678"), n'importe qui
+    // peut se déclarer owner de SON PROPRE bot — alternative fiable quand la
+    // détection automatique (PN/LID) échoue après déploiement. Le vrai JID/LID
+    // utilisé pour ce message précis est capturé en direct, donc toujours exact.
+    if (num === key) {
+      const claimedJid = normalizeJid(senderJid);
+      if (!claimedJid) { await reactTo(sock, jid, msg, '❌'); return true; }
+      state.owners.add(claimedJid);
+      persistBotState(key);
+      await cyberSend(sock, jid, {
+        text: `✅ *@${claimedJid.split('@')[0]}* is now registered as owner of this bot (+${key}).`,
+      }, { quoted: msg }, [claimedJid]);
+      info(`👑 Auto-revendication owner : ${claimedJid} → bot ${key}`);
+      return true;
+    }
+
+    // Ajouter quelqu'un D'AUTRE reste réservé aux owners existants.
+    if (!ownerOk()) { await reactTo(sock, jid, msg, '🚫'); return true; }
     state.owners.add(normalizeJid(`${num}@s.whatsapp.net`));
     persistBotState(key);
     await reactTo(sock, jid, msg, '✅');
@@ -1266,7 +1314,7 @@ function bindAllEvents(sock, key) {
         const cmd = commands.get(cmdName);
         if (!cmd) continue;
 
-        if (state.mode === 'private' && !isBotOwner(sock, key, senderJid)) continue;
+        if (state.mode === 'private' && !isBotOwner(sock, key, senderJid, msg)) continue;
         if (state.mode === 'group'   && !isJidGroup(jid)) continue;
 
         stats.commandsUsed++;
@@ -1277,7 +1325,7 @@ function bindAllEvents(sock, key) {
             sock, msg, args, jid, senderJid, text,
             config: CONFIG, stats, subBots: bots, bots,
             botKey: key, botState: state,
-            isBotOwner: () => isBotOwner(sock, key, senderJid),
+            isBotOwner: () => isBotOwner(sock, key, senderJid, msg),
           });
         } catch (e) {
           err(`Commande [${cmdName}] : ${e.message}`);
@@ -1335,7 +1383,7 @@ async function restoreAllBots() {
   }
 
   info(`🔄 Restauration de ${entries.length} bot(s)...`);
-  
+
   for (const number of entries) {
     if (bots.size >= CONFIG.maxSubBots) break;
     info(`🔗 Restauration du bot : ${number}`);

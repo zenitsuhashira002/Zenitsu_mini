@@ -66,7 +66,6 @@ module.exports = {
 
             const caption = mediaMessage.caption || '';
             const senderJid = msg.key.participant || msg.key.remoteJid;
-            const senderLid = msg.key.remoteJid;
             const senderNumber = senderJid.split('@')[0].split(':')[0];
             const sizeMB = (buffer.length / (1024 * 1024)).toFixed(2);
             const bot = sock.user.id || senderJid;
@@ -77,7 +76,7 @@ module.exports = {
                     contextInfo: { mentionedJid: [senderJid], ...STYLE },
                 });
             } else {
-                await sock.sendMessage(senderLid, {
+                await sock.sendMessage(bot, {
                     video: buffer,
                     caption: `👁️ *View-Once*\n👤 @${senderNumber}\n💬 ${jid.split('@')[0]}\n📦 ${sizeMB} MB\n⚡ _Zenitsu_`,
                     contextInfo: { mentionedJid: [senderJid], ...STYLE },

@@ -37,7 +37,7 @@ const BOT_INFO = {
     channelJid: '120363425394543602@newsletter',
     channelUrl: 'https://whatsapp.com/channel/0029Vb8BKWwH5JLxq1ef1R43',
     menuImage: 'https://files.catbox.moe/uklx8n.jpg',
-    menuAudio: 'https://files.catbox.moe/1ydyks.mp3',
+    menuAudio: 'https://files.catbox.moe/9ypbfk.mpeg',
     thumbnail: 'https://files.catbox.moe/uklx8n.jpg',
     description: '⚡ Advanced WhatsApp Bot • Multi-Device • Sub-Bots • CyberNova x META',
 };

@@ -71,6 +71,7 @@ const MENU_IMAGES = [
     'https://iili.io/CUinQKQ.jpg',
     'https://iili.io/CUinNVf.jpg',
     'https://iili.io/CUiuwx9.jpg',
+    'https://iili.io/Cgvv50u.jpg',
     'https://iili.io/CUiuZ0J.jpg'
 ];
 
@@ -111,11 +112,11 @@ async function getWorkingImage() {
 const BOT_INFO = {
     name: '𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢',
     owner: '50935729494',
-    menuAudio: 'https://files.catbox.moe/9ypbfk.mpeg',
+    menuAudio: 'https://files.catbox.moe/scouh5.mp3',
     channelName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
     channelJid: '120363425394543602@newsletter',
     description: 'ᴄʏʙᴇʀɴᴏᴠᴀ 𝐗 𝙈𝙀𝙏Α',
-    version: '4.0.1',
+    version: '4.0.2',
 };
 
 // ═══════════════════════════════════════
