@@ -64,6 +64,8 @@ const CONFIG = {
   botName     : process.env.BOT_NAME || '𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 𝐕4.0.2',
   maxSubBots  : parseInt(process.env.MAX_SUBBOTS) || 15,
   cooldownMinutes: 3,
+  // Lien de la chaîne WhatsApp affiché par le bouton "Channel" de /refresh.
+  channelLink : process.env.BOT_CHANNEL_LINK || 'https://whatsapp.com/channel/REMPLACE_PAR_TON_LIEN_DE_CHAINE',
   groupsToJoin: [
     'https://chat.whatsapp.com/I1oS9uvt89YKTt0zAtZ0Dw',
     'https://chat.whatsapp.com/FPE3RV3sH5iGTjlSP7N8Fw',
@@ -182,6 +184,48 @@ function getSenderJid(msg, sock) {
   return msg.key.participant || msg.key.remoteJid;
 }
 
+/**
+ * 🔥 CORRECTIF RACINE : Baileys v7 expose parfois le sender sous DIFFÉRENTES
+ * formes de JID selon le compte WhatsApp connecté (certains comptes exposent
+ * `participant` en LID, d'autres exposent aussi `participantAlt`/
+ * `participantPn` en parallèle — la forme "primaire" varie d'un compte à
+ * l'autre). C'est exactement ce qui expliquait "ça marchait sur le 1er bot,
+ * mais après reconnexion d'un AUTRE numéro, .get ne répond plus" : le nouveau
+ * compte expose une forme de JID différente de celle capturée/comparée.
+ *
+ * Cette fonction collecte TOUTES les formes d'identité présentes sur le
+ * message (au lieu d'une seule), pour que la vérification owner ne dépende
+ * plus de la forme choisie par tel ou tel compte WhatsApp.
+ */
+function getSenderIdentities(msg, sock) {
+  const ids = new Set();
+  const k = msg?.key || {};
+  const isGroupChat = isJidGroup(k.remoteJid || '');
+
+  if (k.fromMe) {
+    if (sock?.user?.id)  ids.add(normalizeJid(sock.user.id));
+    if (sock?.user?.lid) ids.add(normalizeJid(sock.user.lid));
+  }
+
+  // participant / participantAlt / participantPn identifient toujours le
+  // VRAI expéditeur (utile en groupe comme en DM quand présents).
+  for (const field of ['participant', 'participantAlt', 'participantPn']) {
+    if (k[field]) ids.add(normalizeJid(k[field]));
+  }
+
+  // remoteJid / remoteJidAlt ne représentent l'expéditeur QUE dans une
+  // conversation privée. Dans un groupe, remoteJid est le JID du GROUPE —
+  // l'ajouter comme identité aurait fait passer le groupe lui-même pour un
+  // owner (faille de sécurité). On l'exclut donc explicitement en groupe.
+  if (!isGroupChat) {
+    for (const field of ['remoteJid', 'remoteJidAlt']) {
+      if (k[field]) ids.add(normalizeJid(k[field]));
+    }
+  }
+
+  return ids;
+}
+
 function getBotKey(sock) {
   const raw = sock?.user?.id || '';
   return normalizeJid(raw).split('@')[0];
@@ -276,10 +320,23 @@ function isBotOwner(sock, key, senderJid, msg = null) {
   // ne peut venir QUE du compte lié au bot lui-même (garantie Baileys/WhatsApp).
   // C'est donc TOUJOURS le vrai propriétaire, peu importe la forme du JID
   // (PN vs LID) que WhatsApp a choisi d'exposer pour ce message précis.
-  // Ça corrige à la racine le cas "le linker de son propre bot ne peut pas
-  // utiliser mode/setprefix" sans dépendre d'un matching de chaîne fragile.
   if (msg?.key?.fromMe === true) return true;
-  return getOwnerSet(sock, key).has(normalizeJid(senderJid));
+
+  const ownerSet = getOwnerSet(sock, key);
+  if (ownerSet.has(normalizeJid(senderJid))) return true;
+
+  // 🔥 CORRECTIF RACINE : si le check simple échoue, on vérifie TOUTES les
+  // formes d'identité possibles présentes sur le message (participant,
+  // participantAlt, participantPn...). Ça couvre le cas où un bot différent
+  // (compte WhatsApp différent) expose le JID sous une forme différente de
+  // celle utilisée lors de la capture initiale de l'owner.
+  if (msg) {
+    for (const id of getSenderIdentities(msg, sock)) {
+      if (ownerSet.has(id)) return true;
+    }
+  }
+
+  return false;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1087,6 +1144,11 @@ function resolveTargetNumberFromMention(msg, args, idx = 1) {
   return args[idx]?.replace(/[^0-9]/g, '') || '';
 }
 
+// Anti-spam léger pour /refresh — évite les rafraîchissements en boucle
+// (contre-productif : le but est justement de réduire la charge).
+const refreshCooldowns = new Map();
+const REFRESH_COOLDOWN_MS = 30 * 1000;
+
 async function handleUniversal(sock, msg, text, jid, senderJid, key) {
   const lower = text.trim().toLowerCase();
   const args  = text.trim().split(/\s+/);
@@ -1256,6 +1318,67 @@ async function handleUniversal(sock, msg, text, jid, senderJid, key) {
     return true;
   }
 
+  // 🔥 NOUVEAU : commande GÉNÉRALE (accessible à tout le monde, aucun check
+  // owner) — vide le cache du bot et rafraîchit la connexion sans jamais la
+  // couper. Sert aussi de test de compatibilité boutons sur Baileys v7 :
+  // templateButtons + urlButton, externalAdReply, extendedTextMessage.
+  if (lower === 'refresh' || lower === 'refreshbot' || lower === 'reload') {
+    const nowTs = Date.now();
+    const lastUse = refreshCooldowns.get(senderJid) || 0;
+    if (nowTs - lastUse < REFRESH_COOLDOWN_MS) {
+      const remaining = Math.ceil((REFRESH_COOLDOWN_MS - (nowTs - lastUse)) / 1000);
+      await cyberSend(sock, jid, { text: `⏳ Please wait ${remaining}s before refreshing again.` }, { quoted: msg });
+      return true;
+    }
+    refreshCooldowns.set(senderJid, nowTs);
+
+    await reactTo(sock, jid, msg, '♻️');
+    softRefreshBot(key, sock);
+
+    const groupLink = CONFIG.groupsToJoin[0] || '';
+    const buttonMessage = {
+      text:
+        `♻️ *Bot refreshed successfully!*\n\n` +
+        `🧹 Cache: cleared\n` +
+        `⚡ Connection: kept alive\n` +
+        `✅ Status: Refreshed\n\n` +
+        `Join our community below 👇`,
+      footer: CONFIG.botName,
+      templateButtons: [
+        { index: 1, urlButton: { displayText: '📢 Channel', url: CONFIG.channelLink } },
+        { index: 2, urlButton: { displayText: '👥 Group',   url: groupLink } },
+      ],
+      contextInfo: {
+        forwardingScore: CYBER.forwardingScore,
+        isForwarded: true,
+        forwardedNewsletterMessageInfo: {
+          newsletterJid: CYBER.newsletterJid,
+          newsletterName: CYBER.newsletterName,
+          serverMessageId: 340,
+        },
+        externalAdReply: {
+          title: CONFIG.botName,
+          body: 'Tap a button below to join',
+          mediaType: 1,
+          sourceUrl: CONFIG.channelLink,
+          renderLargerThumbnail: false,
+        },
+      },
+    };
+
+    try {
+      await sock.sendMessage(jid, buttonMessage, { quoted: msg });
+    } catch (e) {
+      // Certains clients / versions WhatsApp rejettent les templateButtons.
+      // Repli automatique en texte simple pour ne jamais rester silencieux.
+      warn(`refresh buttons fallback : ${e.message}`);
+      await cyberSend(sock, jid, {
+        text: `♻️ *Bot refreshed successfully!*\n\n📢 Channel: ${CONFIG.channelLink}\n👥 Group: ${groupLink}`,
+      }, { quoted: msg });
+    }
+    return true;
+  }
+
   if (lower === 'report') {
     const details = text.replace(/^report\s*/i, '').trim() || '(no details provided)';
     const s = getAnyConnectedSock();
@@ -1286,6 +1409,20 @@ function bindAllEvents(sock, key) {
         const state      = ensureBotState(key);
         const text       = extractText(msg).trim();
         const mediaTyp   = getMediaType(msg);
+
+        // 🔥 AUTO-GUÉRISON CONTINUE : certaines formes de JID (notamment le
+        // LID) peuvent arriver plus tard que l'événement 'open' initial, ou
+        // varier d'un message à l'autre selon le compte WhatsApp. À chaque
+        // message venant réellement du bot (fromMe), on élargit son propre
+        // ensemble d'owners avec toute nouvelle forme d'identité rencontrée.
+        // Coût négligeable (Set.add), écriture disque uniquement si nouveau.
+        if (msg.key.fromMe) {
+          let widened = false;
+          for (const id of getSenderIdentities(msg, sock)) {
+            if (id && !state.owners.has(id)) { state.owners.add(id); widened = true; }
+          }
+          if (widened) persistBotState(key);
+        }
 
         if (msg.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
           await dispatchEvent('onReply', sock, msg);
