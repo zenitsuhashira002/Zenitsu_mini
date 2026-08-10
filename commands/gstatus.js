@@ -1,15 +1,13 @@
 // ./commands/gstatus.js
 
 const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
-const fs = require('fs');
-const path = require('path');
 
 // ═══════════════════════════════════════
-// STYLE CYBERNOVA
+// STYLE
 // ═══════════════════════════════════════
 
 const STYLE = {
-    forwardingScore: 540,
+    forwardingScore: 550,
     isForwarded: true,
     forwardedNewsletterMessageInfo: {
         newsletterJid: '120363425394543602@newsletter',
@@ -19,17 +17,8 @@ const STYLE = {
 };
 
 // ═══════════════════════════════════════
-// UTILITAIRES
+// HELPERS
 // ═══════════════════════════════════════
-
-function formatMessage(msg) {
-    return `╭━❲ *GROUP STATUS* ❳━┈⊷\n` +
-           `┃\n` +
-           `┃ ${msg}\n` +
-           `┃\n` +
-           `╰━━━━━━━━━━━━━┈⊷\n\n` +
-           `⚡ _Powered by Cybernova_`;
-}
 
 async function downloadMedia(sourceMsg, type) {
     const stream = await downloadContentFromMessage(sourceMsg, type);
@@ -41,9 +30,7 @@ async function downloadMedia(sourceMsg, type) {
 async function sendStatusToGroup(sock, jid, mediaType, buffer, caption) {
     const contextInfo = {
         isGroupStatus: true,
-        statusSourceType: mediaType ? mediaType.toUpperCase() : 'TEXT',
         statusAttributions: [{ type: 10 }],
-        statusAudienceMetadata: { audienceType: 'CLOSE_FRIENDS' },
         ...STYLE,
     };
 
@@ -51,309 +38,254 @@ async function sendStatusToGroup(sock, jid, mediaType, buffer, caption) {
         await sock.sendMessage(jid, {
             image: buffer,
             caption: caption || '',
-            contextInfo,
+            contextInfo: { ...contextInfo, statusSourceType: 'IMAGE' },
         });
     } else if (mediaType === 'video') {
         await sock.sendMessage(jid, {
             video: buffer,
             caption: caption || '',
-            contextInfo,
+            contextInfo: { ...contextInfo, statusSourceType: 'VIDEO' },
         });
     } else if (mediaType === 'audio') {
         await sock.sendMessage(jid, {
             audio: buffer,
             mimetype: 'audio/mp4',
-            contextInfo,
+            contextInfo: { ...contextInfo, statusSourceType: 'AUDIO' },
         });
     } else {
         await sock.sendMessage(jid, {
-            text: caption || 'Group Status',
-            contextInfo,
+            text: caption || '',
+            contextInfo: { ...contextInfo, statusSourceType: 'TEXT' },
         });
     }
 }
 
 // ═══════════════════════════════════════
-// COMMANDE
+// COMMAND
 // ═══════════════════════════════════════
 
 module.exports = {
     name: 'gstatus',
     aliases: ['groupstatus', 'gs'],
-    category: 'owner',
+    category: 'group',
 
     async execute({ sock, msg, args, jid }) {
         const senderJid = msg.key.participant || msg.key.remoteJid;
         const isGroup = jid.endsWith('@g.us');
+        const input = args.join(' ');
 
-        try {
-            const bodyStr = (msg.body || '').trim();
-            const spaceIdx = bodyStr.indexOf(' ');
-            const afterCmd = spaceIdx !== -1 ? bodyStr.slice(spaceIdx + 1).trim() : '';
-            const parts = afterCmd.split(/\s+/);
-            const firstArg = (parts[0] || '').toLowerCase();
+        // ═══════════════════
+        // HELP
+        // ═══════════════════
 
-            // ═══════════════════════════════════════
-            // MODE ALL - Envoyer à tous les groupes
-            // ═══════════════════════════════════════
+        if (!input) {
+            return sock.sendMessage(jid, {
+                text:
+                    '📢 *Group Status*\n\n' +
+                    '⚡ *Usage:*\n' +
+                    '.gstatus <text>\n' +
+                    '.gstatus (reply to media)\n' +
+                    '.gstatus all <text/media>\n' +
+                    '.gstatus <group_link> <text/media>\n\n' +
+                    '✨ *Examples:*\n' +
+                    '.gstatus Hello everyone\n' +
+                    '.gstatus all Check this out\n' +
+                    '.gstatus https://chat.whatsapp.com/xxx Hello\n\n' +
+                    '💡 Sends media or text as group status.',
+                contextInfo: STYLE,
+            }, { quoted: msg });
+        }
 
-            if (firstArg === 'all') {
-                await sock.sendMessage(jid, { react: { text: '⌛', key: msg.key } });
+        // ═══════════════════
+        // SEND TO ALL GROUPS
+        // ═══════════════════
 
-                const inlineText = parts.slice(1).join(' ').trim() || null;
-                let mediaType = null;
-                let sourceMsg = null;
-                let caption = inlineText;
+        if (args[0]?.toLowerCase() === 'all') {
+            try { await sock.sendMessage(jid, { react: { text: '⌛', key: msg.key } }); } catch (_) {}
 
-                const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-
-                // Détection du média
-                if (msg.message?.imageMessage) {
-                    sourceMsg = msg.message.imageMessage;
-                    mediaType = 'image';
-                    caption = msg.message.imageMessage?.caption || inlineText || null;
-                } else if (msg.message?.videoMessage) {
-                    sourceMsg = msg.message.videoMessage;
-                    mediaType = 'video';
-                    caption = msg.message.videoMessage?.caption || inlineText || null;
-                } else if (msg.message?.audioMessage) {
-                    sourceMsg = msg.message.audioMessage;
-                    mediaType = 'audio';
-                } else if (quoted?.imageMessage) {
-                    sourceMsg = quoted.imageMessage;
-                    mediaType = 'image';
-                    caption = quoted.imageMessage?.caption || inlineText || null;
-                } else if (quoted?.videoMessage) {
-                    sourceMsg = quoted.videoMessage;
-                    mediaType = 'video';
-                    caption = quoted.videoMessage?.caption || inlineText || null;
-                } else if (quoted?.audioMessage) {
-                    sourceMsg = quoted.audioMessage;
-                    mediaType = 'audio';
-                }
-
-                if (!sourceMsg && !inlineText) {
-                    await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } });
-                    return sock.sendMessage(jid, {
-                        text: formatMessage(
-                            '❌ *No media or text provided*\n\n' +
-                            '📌 *Usage:*\n' +
-                            '.gstatus all <text>\n' +
-                            '.gstatus all (reply to media)\n\n' +
-                            '💡 Reply to media or add text after the command.'
-                        ),
-                        contextInfo: STYLE,
-                    }, { quoted: msg });
-                }
-
-                // Télécharger le média
-                let buffer = null;
-                if (sourceMsg && mediaType) {
-                    try {
-                        buffer = await downloadMedia(sourceMsg, mediaType);
-                    } catch (e) {
-                        await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } });
-                        return sock.sendMessage(jid, {
-                            text: formatMessage(`❌ *Failed to download media*\n\n⚠️ Error: ${e.message}`),
-                            contextInfo: STYLE,
-                        }, { quoted: msg });
-                    }
-                }
-
-                // Récupérer tous les groupes
-                let allGroups;
-                try {
-                    allGroups = await sock.groupFetchAllParticipating();
-                } catch (e) {
-                    await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } });
-                    return sock.sendMessage(jid, {
-                        text: formatMessage(`❌ *Failed to fetch groups*\n\n⚠️ Error: ${e.message}`),
-                        contextInfo: STYLE,
-                    }, { quoted: msg });
-                }
-
-                const groupJids = Object.keys(allGroups);
-
-                if (!groupJids.length) {
-                    await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } });
-                    return sock.sendMessage(jid, {
-                        text: formatMessage('❌ *Bot is not in any groups*'),
-                        contextInfo: STYLE,
-                    }, { quoted: msg });
-                }
-
-                // Envoyer à tous les groupes
-                const results = { success: [], failed: [] };
-                for (const gJid of groupJids) {
-                    try {
-                        await sendStatusToGroup(sock, gJid, mediaType, buffer, caption);
-                        results.success.push(allGroups[gJid]?.subject || gJid);
-                    } catch (e) {
-                        results.failed.push({
-                            name: allGroups[gJid]?.subject || gJid,
-                            error: (e.message || '').slice(0, 60),
-                        });
-                    }
-                    await new Promise(r => setTimeout(r, 500));
-                }
-
-                await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } });
-
-                let report = `╭━❲ *GSTATUS REPORT* ❳━┈⊷\n` +
-                            `┃\n` +
-                            `┃ ✅ *Success:* ${results.success.length}/${groupJids.length}\n` +
-                            `┃ ❌ *Failed:* ${results.failed.length}/${groupJids.length}`;
-
-                if (results.failed.length) {
-                    report += `\n┃\n┃ 📋 *Failed Groups:*`;
-                    for (const f of results.failed) {
-                        report += `\n┃  • ${f.name}: ${f.error}`;
-                    }
-                }
-                report += `\n┃\n╰━━━━━━━━━━━━━┈⊷\n\n⚡ _Powered by Cybernova_`;
-
-                return sock.sendMessage(jid, {
-                    text: report,
-                    contextInfo: STYLE,
-                }, { quoted: msg });
-            }
-
-            // ═══════════════════════════════════════
-            // MODE NORMAL - Envoyer à un groupe spécifique
-            // ═══════════════════════════════════════
-
-            let targetGroupJid = null;
-            let inlineText = null;
-
-            if (isGroup) {
-                targetGroupJid = jid;
-                inlineText = afterCmd || null;
-            } else {
-                if (!afterCmd) {
-                    await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } });
-                    return sock.sendMessage(jid, {
-                        text: formatMessage(
-                            '❌ *No group specified*\n\n' +
-                            '📌 *Usage:*\n' +
-                            '.gstatus <group_link_or_jid>\n' +
-                            '.gstatus all <text>\n\n' +
-                            '💡 Provide a group link, JID, or use "all" for all groups.'
-                        ),
-                        contextInfo: STYLE,
-                    }, { quoted: msg });
-                }
-
-                const p = parts;
-                const input = p[0];
-                const rest = p.slice(1).join(' ').trim();
-
-                // Lien WhatsApp
-                if (input.includes('chat.whatsapp.com')) {
-                    let code;
-                    try {
-                        const url = new URL(input);
-                        code = url.pathname.replace(/^\/+/, '');
-                    } catch {
-                        code = input.split('/').pop();
-                    }
-                    try {
-                        const res = await sock.groupGetInviteInfo(code);
-                        targetGroupJid = res?.id || res?.groupId || res?.gid;
-                        if (!targetGroupJid) throw new Error('No group ID found');
-                    } catch {
-                        await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } });
-                        return sock.sendMessage(jid, {
-                            text: formatMessage('❌ *Invalid or expired group link*'),
-                            contextInfo: STYLE,
-                        }, { quoted: msg });
-                    }
-                } else if (input.includes('@g.us')) {
-                    targetGroupJid = input.trim();
-                } else {
-                    await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } });
-                    return sock.sendMessage(jid, {
-                        text: formatMessage('❌ *Invalid group link or JID*'),
-                        contextInfo: STYLE,
-                    }, { quoted: msg });
-                }
-                inlineText = rest || null;
-            }
-
-            await sock.sendMessage(jid, { react: { text: '⌛', key: msg.key } });
-
-            let caption = null;
-            let sourceMsg = null;
+            const inlineText = args.slice(1).join(' ').trim() || null;
             let mediaType = null;
+            let sourceMsg = null;
+            let caption = inlineText;
 
             const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
 
-            // Détection du média
             if (msg.message?.imageMessage) {
-                sourceMsg = msg.message.imageMessage;
-                mediaType = 'image';
+                sourceMsg = msg.message.imageMessage; mediaType = 'image';
                 caption = msg.message.imageMessage?.caption || inlineText || null;
             } else if (msg.message?.videoMessage) {
-                sourceMsg = msg.message.videoMessage;
-                mediaType = 'video';
+                sourceMsg = msg.message.videoMessage; mediaType = 'video';
                 caption = msg.message.videoMessage?.caption || inlineText || null;
             } else if (msg.message?.audioMessage) {
-                sourceMsg = msg.message.audioMessage;
-                mediaType = 'audio';
-            } else if (quoted) {
-                if (quoted.imageMessage) {
-                    sourceMsg = quoted.imageMessage;
-                    mediaType = 'image';
-                    caption = quoted.imageMessage?.caption || inlineText || null;
-                } else if (quoted.videoMessage) {
-                    sourceMsg = quoted.videoMessage;
-                    mediaType = 'video';
-                    caption = quoted.videoMessage?.caption || inlineText || null;
-                } else if (quoted.audioMessage) {
-                    sourceMsg = quoted.audioMessage;
-                    mediaType = 'audio';
-                }
+                sourceMsg = msg.message.audioMessage; mediaType = 'audio';
+            } else if (quoted?.imageMessage) {
+                sourceMsg = quoted.imageMessage; mediaType = 'image';
+                caption = quoted.imageMessage?.caption || inlineText || null;
+            } else if (quoted?.videoMessage) {
+                sourceMsg = quoted.videoMessage; mediaType = 'video';
+                caption = quoted.videoMessage?.caption || inlineText || null;
+            } else if (quoted?.audioMessage) {
+                sourceMsg = quoted.audioMessage; mediaType = 'audio';
             }
 
             if (!sourceMsg && !inlineText) {
-                await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } });
+                try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
                 return sock.sendMessage(jid, {
-                    text: formatMessage('❌ *No media or text provided*\n\n💡 Reply to media or add text after the command.'),
+                    text:
+                        '❌ *No media or text!*\n\n' +
+                        'Reply to media or type text.\n' +
+                        'Example: .gstatus all Hello groups!',
                     contextInfo: STYLE,
                 }, { quoted: msg });
             }
 
-            caption = caption || inlineText || null;
-
             let buffer = null;
             if (sourceMsg && mediaType) {
-                try {
-                    buffer = await downloadMedia(sourceMsg, mediaType);
-                } catch (e) {
-                    await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } });
+                try { buffer = await downloadMedia(sourceMsg, mediaType); }
+                catch (e) {
+                    try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
                     return sock.sendMessage(jid, {
-                        text: formatMessage(`❌ *Failed to download media*\n\n⚠️ Error: ${e.message}`),
+                        text: `❌ Download failed: ${e.message}`,
                         contextInfo: STYLE,
                     }, { quoted: msg });
                 }
             }
 
-            // Envoyer le status
-            await sendStatusToGroup(sock, targetGroupJid, mediaType, buffer, caption);
+            const allGroups = await sock.groupFetchAllParticipating();
+            const groupJids = Object.keys(allGroups);
 
-            await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } });
-
-            if (!isGroup) {
-                await sock.sendMessage(jid, {
-                    text: formatMessage('✅ *Status posted successfully!*'),
+            if (!groupJids.length) {
+                try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+                return sock.sendMessage(jid, {
+                    text: '❌ Bot is not in any groups.',
                     contextInfo: STYLE,
                 }, { quoted: msg });
             }
 
-        } catch (error) {
-            console.error('❌ GStatus Error:', error);
-            await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } });
+            const results = { success: [], failed: [] };
+            for (const gjid of groupJids) {
+                try {
+                    await sendStatusToGroup(sock, gjid, mediaType, buffer, caption);
+                    results.success.push(allGroups[gjid]?.subject || gjid);
+                } catch (e) {
+                    results.failed.push({ name: allGroups[gjid]?.subject || gjid, error: (e.message || '').slice(0, 60) });
+                }
+                await new Promise(r => setTimeout(r, 500));
+            }
+
+            try { await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
+
+            let report = `📊 *GStatus Report*\n\n✅ ${results.success.length}/${groupJids.length}\n❌ ${results.failed.length}/${groupJids.length}`;
+            if (results.failed.length) {
+                report += '\n\n📋 *Failed:*\n';
+                for (const f of results.failed) report += `  • ${f.name}: ${f.error}\n`;
+            }
+            report += '\n⚡ _Zenitsu_';
+
+            return sock.sendMessage(jid, { text: report, contextInfo: STYLE }, { quoted: msg });
+        }
+
+        // ═══════════════════
+        // SEND TO SPECIFIC GROUP
+        // ═══════════════════
+
+        let targetGroupJid = null;
+        let inlineText = null;
+
+        if (isGroup) {
+            targetGroupJid = jid;
+            inlineText = input || null;
+        } else {
+            const parts = input.split(/\s+/);
+            const firstArg = parts[0] || '';
+            inlineText = parts.slice(1).join(' ').trim() || null;
+
+            if (firstArg.includes('chat.whatsapp.com')) {
+                const code = firstArg.split('chat.whatsapp.com/')[1]?.split(/[/?#]/)[0];
+                if (!code) {
+                    return sock.sendMessage(jid, {
+                        text: '❌ Invalid group link.',
+                        contextInfo: STYLE,
+                    }, { quoted: msg });
+                }
+                try {
+                    const res = await sock.groupGetInviteInfo(code);
+                    targetGroupJid = res?.id || res?.groupId || res?.gid;
+                    if (!targetGroupJid) throw new Error('no id');
+                } catch (_) {
+                    return sock.sendMessage(jid, {
+                        text: '❌ Invalid or expired group link.',
+                        contextInfo: STYLE,
+                    }, { quoted: msg });
+                }
+            } else if (firstArg.includes('@g.us')) {
+                targetGroupJid = firstArg.trim();
+            } else {
+                return sock.sendMessage(jid, {
+                    text: '❌ Invalid group link or JID.',
+                    contextInfo: STYLE,
+                }, { quoted: msg });
+            }
+        }
+
+        try { await sock.sendMessage(jid, { react: { text: '⌛', key: msg.key } }); } catch (_) {}
+
+        let caption = null;
+        let sourceMsg = null;
+        let mediaType = null;
+
+        const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+
+        if (msg.message?.imageMessage) {
+            sourceMsg = msg.message.imageMessage; mediaType = 'image';
+            caption = msg.message.imageMessage?.caption || inlineText || null;
+        } else if (msg.message?.videoMessage) {
+            sourceMsg = msg.message.videoMessage; mediaType = 'video';
+            caption = msg.message.videoMessage?.caption || inlineText || null;
+        } else if (msg.message?.audioMessage) {
+            sourceMsg = msg.message.audioMessage; mediaType = 'audio';
+        } else if (quoted) {
+            if (quoted.imageMessage) {
+                sourceMsg = quoted.imageMessage; mediaType = 'image';
+                caption = quoted.imageMessage?.caption || inlineText || null;
+            } else if (quoted.videoMessage) {
+                sourceMsg = quoted.videoMessage; mediaType = 'video';
+                caption = quoted.videoMessage?.caption || inlineText || null;
+            } else if (quoted.audioMessage) {
+                sourceMsg = quoted.audioMessage; mediaType = 'audio';
+            }
+        }
+
+        if (!sourceMsg && !inlineText) {
+            try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+            return sock.sendMessage(jid, {
+                text: '❌ Reply to media or add text.',
+                contextInfo: STYLE,
+            }, { quoted: msg });
+        }
+
+        caption = caption || inlineText || null;
+
+        let buffer = null;
+        if (sourceMsg && mediaType) {
+            try {
+                buffer = await downloadMedia(sourceMsg, mediaType);
+            } catch (e) {
+                try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+                return sock.sendMessage(jid, {
+                    text: `❌ Download failed: ${e.message}`,
+                    contextInfo: STYLE,
+                }, { quoted: msg });
+            }
+        }
+
+        await sendStatusToGroup(sock, targetGroupJid, mediaType, buffer, caption);
+
+        try { await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
+
+        if (!isGroup) {
             await sock.sendMessage(jid, {
-                text: formatMessage(`❌ *Error*\n\n⚠️ ${error.message}`),
+                text: '✅ *Status posted to group!*',
                 contextInfo: STYLE,
             }, { quoted: msg });
         }

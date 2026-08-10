@@ -141,10 +141,11 @@ async function sendWelcomeCard(sock, groupId, userJid, groupName, memberCount) {
             await sock.sendMessage(groupId, {
                 image: buffer,
                 caption:
-                    `✮ *Welcome!* ✮\n\n` +
+                    `✮ *𝗪𝗲𝗹𝗰𝗼𝗺𝗲* ✮\n\n` +
                     `👤 @${userJid.split('@')[0].split(':')[0]}\n` +
                     `📢 ${groupName}\n` +
-                    `👥 Members: ${memberCount}\n\n` +
+                    `👥 𝗠𝗲𝗺𝗯𝗲𝗿𝘀: ${memberCount}\n\n` +
+                    `𝑼𝒔𝒆 *.𝒘𝒆𝒍𝒄𝒐𝒎𝒆* 𝒐𝒇𝒇 𝒕𝒐 𝒅𝒊𝒔𝒂𝒃𝒍𝒆 𝒕𝒉𝒊𝒔 𝒆𝒗𝒆𝒏𝒕\n` +
                     '⚡ _Powered by Cybernova_',
                 contextInfo: { mentionedJid: [userJid], ...STYLE },
             });
@@ -168,14 +169,14 @@ async function sendFallbackWelcome(sock, groupId, userJid, groupName, memberCoun
         await sock.sendMessage(groupId, {
             image: { url: randomImage },
             caption:
-                `╭━━❲ *WELCOME* ❳━━╮\n` +
+                `╭━━❲ *𝚆𝚎𝚕𝚌𝚘𝚖𝚎* ❳━━╮\n` +
                 `┃\n` +
                 `┃ ✮ @${userName}\n` +
                 `┃ *${groupName}*\n` +
                 `┃\n` +
-                `┃ 👥 Member: ${memberCount}\n` +
+                `┃ 👥 𝗠𝗲𝗺𝗯𝗲𝗿𝘀: ${memberCount}\n` +
                 `┃ ⚡ Respect all admins\n` +
-                `┃ 📢 Follow our channel\n` +
+                `┃ 𝑼𝒔𝒆 *.𝒘𝒆𝒍𝒄𝒐𝒎𝒆* 𝒐𝒇𝒇 𝒕𝒐 𝒅𝒊𝒔𝒂𝒃𝒍𝒆 𝒕𝒉𝒊𝒔 𝒆𝒗𝒆𝒏𝒕\n` +
                 `╰━━━━━━━━━━━━━━━━━━╯\n\n` +
                 '© 𝙋𝙤𝙬𝙚𝙧𝙚𝙙 𝙗𝙮 𝙘𝙮𝙗𝙚𝙧𝙣𝙤𝙫𝘼',
             contextInfo: { mentionedJid: [userJid], ...STYLE },
@@ -197,9 +198,9 @@ async function sendTextWelcome(sock, groupId, userJid, groupName, memberCount) {
 
         await sock.sendMessage(groupId, {
             text:
-                `✮ *Welcome @${userName}!* ✮\n` +
+                `✮ *𝗪𝗲𝗹𝗰𝗼𝗺𝗲 @${userName}!* ✮\n` +
                 `📢 ${groupName}\n` +
-                `👥 Members: ${memberCount}\n\n` +
+                `👥 𝗠𝗲𝗺𝗯𝗲𝗿𝘀: ${memberCount}\n\n` +
                 '⚡ *Rules:*\n' +
                 '• Respect all members\n' +
                 '• No spam or NSFW\n' +

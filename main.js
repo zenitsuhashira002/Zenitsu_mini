@@ -74,6 +74,9 @@ const CONFIG = {
   PORT: parseInt(process.env.PORT) || 3000,
 };
 CONFIG.OWNER_JID = CONFIG.ownerNumber ? CONFIG.ownerNumber + '@s.whatsapp.net' : '';
+// 🔥 Si l'opérateur a fixé BOT_OWNER/BOT_OWNER_LID manuellement, on ne doit
+// JAMAIS l'écraser automatiquement, même si un autre bot se connecte en premier.
+CONFIG.ownerExplicit = !!(process.env.BOT_OWNER || process.env.OWNER_NUMBER || process.env.BOT_OWNER_LID || process.env.OWNER_LID);
 
 // ═══════════════════════════════════════════════════════════════
 // BROWSER FINGERPRINTS
@@ -381,6 +384,82 @@ function setMainBot(key) {
   persistBotState(key);
 
   info(`👑 Main bot (affichage) : ${key}`);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 🔥 CORRECTIF PRINCIPAL : OWNER GÉNÉRAL DYNAMIQUE DU DÉPLOIEMENT
+//
+// Problème résolu : le premier bot RÉELLEMENT connecté (pas juste "tenté")
+// devient le compte de référence pour l'ensemble du déploiement. Son
+// identité (PN + LID) devient CONFIG.OWNER_JID / CONFIG.OWNER_LID — que
+// `getOwnerSet()` lit à CHAQUE appel, pour N'IMPORTE QUEL bot (le premier
+// comme le dixième). Donc si numéro1 est abandonné et numéro2 est le
+// premier à réellement se connecter, numéro2 (et son linker) devient
+// automatiquement reconnu comme owner général — sur numéro2 lui-même ET
+// sur tout bot connecté ensuite (numéro3, numéro4...).
+//
+// Persisté sur disque pour survivre à un redéploiement Render : au
+// redémarrage, l'identité est restaurée AVANT même qu'un bot ne se
+// reconnecte, donc aucune fenêtre de vulnérabilité.
+//
+// Ne s'applique JAMAIS si l'opérateur a fixé BOT_OWNER/BOT_OWNER_LID
+// manuellement (CONFIG.ownerExplicit) — un choix explicite est toujours
+// respecté et jamais écrasé automatiquement.
+// ═══════════════════════════════════════════════════════════════
+const GLOBAL_OWNER_FILE = path.join(__dirname, 'auth', 'global-owner.json');
+
+function saveGlobalOwner() {
+  try {
+    fs.mkdirSync(path.dirname(GLOBAL_OWNER_FILE), { recursive: true });
+    fs.writeFileSync(GLOBAL_OWNER_FILE, JSON.stringify({
+      ownerNumber: CONFIG.ownerNumber,
+      OWNER_JID: CONFIG.OWNER_JID,
+      OWNER_LID: CONFIG.OWNER_LID,
+    }, null, 2));
+  } catch (e) {
+    warn(`Sauvegarde owner général échouée : ${e.message}`);
+  }
+}
+
+function loadGlobalOwner() {
+  if (CONFIG.ownerExplicit) return; // choix manuel prioritaire, ne pas toucher
+  try {
+    if (!fs.existsSync(GLOBAL_OWNER_FILE)) return;
+    const data = JSON.parse(fs.readFileSync(GLOBAL_OWNER_FILE, 'utf8'));
+    if (data.ownerNumber) CONFIG.ownerNumber = data.ownerNumber;
+    if (data.OWNER_JID)   CONFIG.OWNER_JID   = data.OWNER_JID;
+    if (data.OWNER_LID)   CONFIG.OWNER_LID   = data.OWNER_LID;
+    if (CONFIG.OWNER_JID || CONFIG.OWNER_LID) {
+      info(`👑 Owner général restauré depuis le disque : ${CONFIG.OWNER_JID || CONFIG.OWNER_LID}`);
+    }
+  } catch (e) {
+    warn(`Lecture owner général échouée : ${e.message}`);
+  }
+}
+
+function promoteGlobalOwner(sock, key) {
+  if (CONFIG.ownerExplicit) return; // l'opérateur a choisi manuellement, on ne touche à rien
+
+  const pnJid  = sock?.user?.id  ? normalizeJid(sock.user.id)  : '';
+  const lidJid = sock?.user?.lid ? normalizeJid(sock.user.lid) : '';
+  if (!pnJid && !lidJid) return;
+
+  CONFIG.ownerNumber = pnJid ? pnJid.split('@')[0] : CONFIG.ownerNumber;
+  if (pnJid)  CONFIG.OWNER_JID = pnJid;
+  if (lidJid) CONFIG.OWNER_LID = lidJid;
+  saveGlobalOwner();
+
+  // Propage immédiatement cette identité comme owner sur TOUS les bots déjà
+  // connus. Les bots connectés APRÈS l'hériteront automatiquement aussi,
+  // puisque getOwnerSet() relit CONFIG.OWNER_JID/OWNER_LID à chaque appel.
+  for (const [otherKey, st] of botStates.entries()) {
+    let changed = false;
+    if (pnJid  && !st.owners.has(pnJid))  { st.owners.add(pnJid);  changed = true; }
+    if (lidJid && !st.owners.has(lidJid)) { st.owners.add(lidJid); changed = true; }
+    if (changed) persistBotState(otherKey);
+  }
+
+  info(`👑 Owner général du déploiement défini automatiquement : ${pnJid || lidJid}`);
 }
 
 function notifyMainBotUpdate() {
@@ -738,13 +817,6 @@ async function connectBot(number, { requesterJid = null } = {}) {
   let retry = 0;
   let pairRequested = false;
 
-  // Premier bot connecté → devient la référence pour l'affichage
-  const isFirstBot = bots.size === 0;
-  if (isFirstBot) {
-    setMainBot(key);
-    info(`👑 Premier bot → référence d'affichage : ${cleanNumber}`);
-  }
-
   notifyWebInterface('subbot_connecting', { number: cleanNumber });
   info(`🔗 Connexion du bot : ${cleanNumber}`);
 
@@ -779,7 +851,7 @@ async function connectBot(number, { requesterJid = null } = {}) {
         createdAt: bots.get(key)?.createdAt || Date.now(),
         browser: browser.join(' / '),
         number: cleanNumber,
-        isMain: isFirstBot || (bots.get(key)?.isMain || false),
+        isMain: bots.get(key)?.isMain || false,
       });
 
       sock.ev.on('connection.update', async (update) => {
@@ -831,6 +903,20 @@ async function connectBot(number, { requesterJid = null } = {}) {
             stNow.lastKeepAliveAt = Date.now();
             stNow.lastRestart     = Date.now();
 
+            // 🔥 CORRECTIF RACINE : déterminé ICI, au moment où la connexion
+            // aboutit RÉELLEMENT — pas au moment de l'appel `pair` (qui peut
+            // être abandonné/échoué sans jamais se connecter). Base sur les
+            // bots effectivement `connected: true`, jamais sur la simple
+            // présence dans la Map. C'est ce qui corrige le cas "numéro1
+            // abandonné, numéro2 devient le vrai premier bot connecté".
+            const anotherBotAlreadyConnected = [...bots.entries()]
+              .some(([k, b]) => k !== key && b.connected);
+            if (!anotherBotAlreadyConnected && !(mainBotKey && bots.get(mainBotKey)?.connected)) {
+              setMainBot(key);
+              promoteGlobalOwner(sock, key);
+              info(`👑 Premier bot réellement connecté → référence + owner général : ${cleanNumber}`);
+            }
+
             // 🔥 CORRECTIF OWNER : capture et persiste définitivement l'identité
             // réelle (PN + LID) de la personne qui vient de lier ce bot. Cela
             // survit même si sock.user.lid redevient temporairement absent
@@ -844,6 +930,17 @@ async function connectBot(number, { requesterJid = null } = {}) {
               const lidJid = normalizeJid(sock.user.lid);
               if (lidJid && !stNow.owners.has(lidJid)) { stNow.owners.add(lidJid); ownerCaptured = true; }
             }
+            // 🔥 Hérite aussi de l'owner général déjà établi (si ce bot n'est
+            // pas le premier) — pour que numéro3, numéro4... reconnaissent
+            // eux aussi immédiatement le même opérateur humain comme owner.
+            if (CONFIG.OWNER_JID) {
+              const gJid = normalizeJid(CONFIG.OWNER_JID);
+              if (gJid && !stNow.owners.has(gJid)) { stNow.owners.add(gJid); ownerCaptured = true; }
+            }
+            if (CONFIG.OWNER_LID) {
+              const gLid = normalizeJid(CONFIG.OWNER_LID);
+              if (gLid && !stNow.owners.has(gLid)) { stNow.owners.add(gLid); ownerCaptured = true; }
+            }
             if (ownerCaptured) {
               persistBotState(key);
               info(`👑 Owner capturé automatiquement pour ${cleanNumber} (PN+LID persistés).`);
@@ -855,11 +952,11 @@ async function connectBot(number, { requesterJid = null } = {}) {
               prefix: stNow.prefix,
               antidelete: stNow.antidelete,
               browser: browser.join(' / '),
-              isMain: bots.get(key)?.isMain || false,
+              isMain: stNow.isMain || false,
             });
 
             // Met à jour l'affichage du "main bot" si c'est le premier
-            if (bots.get(key)?.isMain) {
+            if (stNow.isMain) {
               notifyWebInterface('main_connected', {
                 number: cleanNumber,
                 mode: stNow.mode,
@@ -875,7 +972,7 @@ async function connectBot(number, { requesterJid = null } = {}) {
               createdAt: bots.get(key)?.createdAt || Date.now(),
               browser: browser.join(' / '),
               number: cleanNumber,
-              isMain: bots.get(key)?.isMain || false,
+              isMain: stNow.isMain || false,
             });
 
             await sendSelfConnectedMessage(sock, `BOT ${cleanNumber}`, key);
@@ -1144,11 +1241,6 @@ function resolveTargetNumberFromMention(msg, args, idx = 1) {
   return args[idx]?.replace(/[^0-9]/g, '') || '';
 }
 
-// Anti-spam léger pour /refresh — évite les rafraîchissements en boucle
-// (contre-productif : le but est justement de réduire la charge).
-const refreshCooldowns = new Map();
-const REFRESH_COOLDOWN_MS = 30 * 1000;
-
 async function handleUniversal(sock, msg, text, jid, senderJid, key) {
   const lower = text.trim().toLowerCase();
   const args  = text.trim().split(/\s+/);
@@ -1314,67 +1406,6 @@ async function handleUniversal(sock, msg, text, jid, senderJid, key) {
         return `${i + 1}. ${status} +${k}${mainTag} — mode:${st2.mode} prefix:${st2.prefix} (up ${formatUptime(Date.now() - bot.createdAt)})`;
       }).join('\n');
       await cyberSend(sock, jid, { text: `🤖 *Active bots (${bots.size}/${CONFIG.maxSubBots})*\n\n${list}` }, { quoted: msg });
-    }
-    return true;
-  }
-
-  // 🔥 NOUVEAU : commande GÉNÉRALE (accessible à tout le monde, aucun check
-  // owner) — vide le cache du bot et rafraîchit la connexion sans jamais la
-  // couper. Sert aussi de test de compatibilité boutons sur Baileys v7 :
-  // templateButtons + urlButton, externalAdReply, extendedTextMessage.
-  if (lower === 'refresh' || lower === 'refreshbot' || lower === 'reload') {
-    const nowTs = Date.now();
-    const lastUse = refreshCooldowns.get(senderJid) || 0;
-    if (nowTs - lastUse < REFRESH_COOLDOWN_MS) {
-      const remaining = Math.ceil((REFRESH_COOLDOWN_MS - (nowTs - lastUse)) / 1000);
-      await cyberSend(sock, jid, { text: `⏳ Please wait ${remaining}s before refreshing again.` }, { quoted: msg });
-      return true;
-    }
-    refreshCooldowns.set(senderJid, nowTs);
-
-    await reactTo(sock, jid, msg, '♻️');
-    softRefreshBot(key, sock);
-
-    const groupLink = CONFIG.groupsToJoin[0] || '';
-    const buttonMessage = {
-      text:
-        `♻️ *Bot refreshed successfully!*\n\n` +
-        `🧹 Cache: cleared\n` +
-        `⚡ Connection: kept alive\n` +
-        `✅ Status: Refreshed\n\n` +
-        `Join our community below 👇`,
-      footer: CONFIG.botName,
-      templateButtons: [
-        { index: 1, urlButton: { displayText: '📢 Channel', url: CONFIG.channelLink } },
-        { index: 2, urlButton: { displayText: '👥 Group',   url: groupLink } },
-      ],
-      contextInfo: {
-        forwardingScore: CYBER.forwardingScore,
-        isForwarded: true,
-        forwardedNewsletterMessageInfo: {
-          newsletterJid: CYBER.newsletterJid,
-          newsletterName: CYBER.newsletterName,
-          serverMessageId: 340,
-        },
-        externalAdReply: {
-          title: CONFIG.botName,
-          body: 'Tap a button below to join',
-          mediaType: 1,
-          sourceUrl: CONFIG.channelLink,
-          renderLargerThumbnail: false,
-        },
-      },
-    };
-
-    try {
-      await sock.sendMessage(jid, buttonMessage, { quoted: msg });
-    } catch (e) {
-      // Certains clients / versions WhatsApp rejettent les templateButtons.
-      // Repli automatique en texte simple pour ne jamais rester silencieux.
-      warn(`refresh buttons fallback : ${e.message}`);
-      await cyberSend(sock, jid, {
-        text: `♻️ *Bot refreshed successfully!*\n\n📢 Channel: ${CONFIG.channelLink}\n👥 Group: ${groupLink}`,
-      }, { quoted: msg });
     }
     return true;
   }
@@ -1775,6 +1806,7 @@ async function startServer() {
   });
 
   validateConfig();
+  loadGlobalOwner();
   loadHistory();
   loadCommands();
   loadEvents();

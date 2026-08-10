@@ -157,14 +157,14 @@ async function sendFallbackGoodbye(sock, groupId, userJid, groupName, memberCoun
         await sock.sendMessage(groupId, {
             image: { url: randomImage },
             caption:
-                `╭━━━━❲ *GOODBYE* ❳━━━━╮\n` +
+                `╭━━━━❲ *𝔾𝕠𝕠𝕕𝕓𝕪𝕖* ❳━━━━╮\n` +
                 `┃\n` +
                 `┃  🫂 @${userName}\n` +
-                `┃  Has left *${groupName}*\n` +
+                `┃  ʜᴀs ʟᴇꜰᴛ*${groupName}*\n` +
                 `┃\n` +
-                `┃  👥 Members: ${memberCount}\n` +
+                `┃  👥 ${memberCount} 𝕄𝕖𝕞𝕓𝕖𝕣𝕤 𝕟𝕠𝕨\n` +
                 `┃\n` +
-                `┃  🥀 We'll miss you!\n` +
+                `┃  🥀 ᴡᴇ'ʟʟ ᴍɪss ʏᴏᴜ\n` +
                 `┃\n` +
                 `╰━━━━━━━━━━━━━━━━━━━━━━╯\n\n` +
                 '© 𝙋𝙤𝙬𝙚𝙧𝙚𝙙 𝙗𝙮 𝙘𝙮𝙗𝙚𝙧𝙣𝙤𝙫𝘼',
@@ -187,10 +187,10 @@ async function sendTextGoodbye(sock, groupId, userJid, groupName, memberCount) {
 
         await sock.sendMessage(groupId, {
             text:
-                `🫂 *Goodbye @${userName}*\n` +
+                `🫂 *ɢᴏᴏᴅʙʏᴇ @${userName}*\n` +
                 `📢 ${groupName}\n` +
-                `👥 ${memberCount} members now.\n\n` +
-                '🥀 We wish you all the best!\n\n' +
+                `👥 ${memberCount} 𝕄𝕖𝕞𝕓𝕖𝕣𝕤 𝕟𝕠𝕨\n\n` +
+                '🥀 𝐖𝐞 𝐰𝐢𝐬𝐡 𝐲𝐨𝐮 𝐚𝐥𝐥 𝐭𝐡𝐞 𝐛𝐞𝐬𝐭!\n\n' +
                 '⚡ _Powered by Cybernova_',
             contextInfo: { mentionedJid: [userJid], ...STYLE },
         });

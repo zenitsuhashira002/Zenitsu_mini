@@ -437,7 +437,7 @@ const searchImages = async (query, limit = CONFIG.RESULTS_LIMIT, selectedId = nu
 // ╚══════════════════════════════════════════════════════╝
 
 module.exports = {
-    name       : 'image',
+    name       : 'image2',
     aliases    : ['img', 'search', 'photo', 'picture', 'find'],
     description: 'Search and send images with automatic multi-source fallback',
 
@@ -481,14 +481,14 @@ module.exports = {
 ${getProviderList()}
 ┃
 ┃  📌 *Usage :*
-┃  • .image [keyword]
-┃  • .image [id] [keyword]
-┃  • .image list
+┃  • .image2 [keyword]
+┃  • .image2 [id] [keyword]
+┃  • .image2 list
 ┃
 ┃  💡 *Examples :*
-┃  .image cat
-┃  .image 1 landscape
-┃  .image 3 red car
+┃  .image2 cat
+┃  .image2 1 landscape
+┃  .image2 3 red car
 ┃
 ┃  ⚠️ *Limit :* ${CONFIG.RESULTS_LIMIT} images per search
 ┃  🔄 *Auto-fallback :* enabled
@@ -529,9 +529,9 @@ _©CybernovA_`;
 Usage : .image [keyword]
 
 *Examples :*
-.image cat
-.image 1 landscape
-.image list → View all services
+.image2 cat
+.image2 1 landscape
+.image2 list → View all services
 
 ━━━━━━━━━━━━━━━
 _©CybernovA_`
@@ -635,9 +635,9 @@ ${fallbackUsed ? '┃\n┃  🔀 *Fallback was triggered*' : ''}
 ${totalFailed > 0 ? `┃  ⚠️  ${totalFailed} image(s) failed to send` : ''}
 ┃
 ┃  💡 *Tip :*
-┃  Use .image [id] [keyword]
+┃  Use .image2 [id] [keyword]
 ┃  to target a specific source
-┃  Ex: .image 3 sunset
+┃  Ex: .image2 3 sunset
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯
 
@@ -661,7 +661,6 @@ _©CybernovA_`;
 ┃  💡 *Solutions :*
 ┃  • Try again in a few minutes
 ┃  • Use a different keyword
-┃  • Check: npm install axios
 ┃  • Try .image list to see
 ┃    available services
 ┃
