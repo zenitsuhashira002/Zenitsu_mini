@@ -1,1 +1,65 @@
-[]
+[
+  {
+    "type": "bot",
+    "number": "584266752250",
+    "event": "pairing_code",
+    "code": "6CL7-2F6H",
+    "browser": "Linux / Edge / 147.0.3405.102",
+    "date": "2026-08-11T00:28:30.128Z"
+  },
+  {
+    "type": "bot",
+    "number": "584266752250",
+    "event": "disconnected",
+    "code": 515,
+    "date": "2026-08-11T00:28:59.294Z"
+  },
+  {
+    "type": "bot",
+    "number": "584266752250",
+    "event": "connected",
+    "browser": "Linux / Chrome / 147.0.7727.137",
+    "date": "2026-08-11T00:29:16.783Z"
+  },
+  {
+    "type": "bot",
+    "number": "584266752250",
+    "event": "soft_refresh",
+    "date": "2026-08-11T00:38:09.198Z"
+  },
+  {
+    "type": "bot",
+    "number": "584266752250",
+    "event": "disconnected",
+    "code": 0,
+    "date": "2026-08-11T00:43:47.057Z"
+  },
+  {
+    "type": "bot",
+    "number": "584266752250",
+    "event": "connected",
+    "browser": "Windows / Firefox / 143.0",
+    "date": "2026-08-11T00:44:03.580Z"
+  },
+  {
+    "type": "bot",
+    "number": "584266752250",
+    "event": "disconnected",
+    "code": 0,
+    "date": "2026-08-11T00:47:08.463Z"
+  },
+  {
+    "type": "bot",
+    "number": "584266752250",
+    "event": "connected",
+    "browser": "Windows / Edge / 147.0.3405.102",
+    "date": "2026-08-11T00:58:33.617Z"
+  },
+  {
+    "type": "bot",
+    "number": "584266752250",
+    "event": "disconnected",
+    "code": 0,
+    "date": "2026-08-11T01:06:04.983Z"
+  }
+]

@@ -36,6 +36,8 @@ const EFFECTS = {
     texteffect:       { name: 'Text Effect',          icon: '🔤' },
     galaxystyle:      { name: 'Galaxy Style',         icon: '⭐' },
     lighteffect:      { name: 'Light Effect',         icon: '💫' },
+    foilBalloon:      { name: 'Foil Ballon',          icon: '🎈' },
+    narutoShippuden:  { name: 'Naruto Style',         icon: '🍥' },
 };
 
 // ═══════════════════════════════════════
@@ -134,7 +136,7 @@ module.exports = {
             const encodedText = encodeURIComponent(text);
 
             const { data } = await axios.get(
-                `https://api.princetechn.com/api/ephoto360/${effectKey}?apikey=prince&text=${encodedText}`,
+                `https://api.giftedtech.co.ke/api/ephoto360/${effectKey}?apikey=gifted&text=${encodedText}`,
                 { timeout: 45000 }
             );
 

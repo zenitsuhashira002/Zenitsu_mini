@@ -12,7 +12,7 @@ const TEMP_DIR = path.join(process.cwd(), 'temp');
 if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
 
 module.exports = {
-    name: 'brat',
+    name: 'brat2',
     aliases: ['bratv', 'brat-video', 'textvideo'],
     description: 'Transform text into a stylish video and sticker',
 
@@ -40,9 +40,9 @@ module.exports = {
 ┃  .brat [text]
 ┃
 ┃  💡 *Examples :*
-┃  .brat Hello World
-┃  .brat I like zenitsu
-┃  .bratv Zenitsu Bot
+┃  .brat2 Hello World
+┃  .brat2 I like zenitsu
+┃  .brat2 Zenitsu Bot
 ┃
 ┃  🎯 *Features :*
 ┃  • Generate stylish Photo
@@ -80,7 +80,7 @@ _©CybernovA_`;
                 });
             }
             return sock.sendMessage(from, {
-                text: '❌ *Text missing*\n\nUsage: .brat [text]\n\nExample: .brat Hello World'
+                text: '❌ *Text missing*\n\nUsage: .brat2 [text]\n\nExample: .brat Hello World'
             }, { quoted: msg });
         }
 

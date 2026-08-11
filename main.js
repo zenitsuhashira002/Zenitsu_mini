@@ -500,6 +500,18 @@ function loadEvents() {
       loadedCount++;
     } catch (e) { err(`events/${file} : ${e.message}`); }
   }
+
+  // ⭐ PRIORITÉ : bot.js en premier pour bloquer les messages
+  const priorityOrder = ['messages.upsert'];
+  for (const eventName of priorityOrder) {
+    const handlers = eventHandlers.get(eventName) || [];
+    const botHandler = handlers.find(h => h.name === 'bot');
+    if (botHandler) {
+      handlers.splice(handlers.indexOf(botHandler), 1);
+      handlers.unshift(botHandler);
+    }
+  }
+
   info(`✓ ${loadedCount} type(s) d'événement(s) chargé(s) (${eventHandlers.size} handlers).`);
 }
 
@@ -1178,7 +1190,6 @@ async function handleUniversal(sock, msg, text, jid, senderJid, key) {
 
   return false;
 }
-
 // ═══════════════════════════════════════
 // BIND ALL EVENTS
 // ═══════════════════════════════════════
@@ -1256,7 +1267,6 @@ function bindAllEvents(sock, key) {
       }
     } catch (e) { err(`messages.upsert handler [${key}] : ${e.message}`); }
   });
-
   sock.ev.on('messages.update',           (u) => dispatchEvent('messages.update',           sock, u));
   sock.ev.on('message-receipt.update',    (u) => dispatchEvent('message-receipt.update',    sock, u));
   sock.ev.on('messages.delete',           (u) => dispatchEvent('messages.delete',           sock, u));
@@ -1279,7 +1289,6 @@ function bindAllEvents(sock, key) {
   sock.ev.on('labels.association',        (u) => dispatchEvent('labels.association',        sock, u));
   sock.ev.on('newsletters',                (u) => dispatchEvent('newsletters',                sock, u));
 }
-
 // ═══════════════════════════════════════
 // RESTORE ALL BOTS
 // ═══════════════════════════════════════

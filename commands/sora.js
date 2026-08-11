@@ -1,6 +1,4 @@
-
 // ./commands/sora.js
-
 const axios = require('axios');
 
 module.exports = {
@@ -37,7 +35,7 @@ module.exports = {
 
         try {
             const { data } = await axios.get(
-                `https://apis.davidcyriltech.my.id/epicrealism?prompt=${encodeURIComponent(prompt)}`,
+                `https://apis.davidcyriltech.my.id/ai/dalle?text=${encodeURIComponent(prompt)}`,
                 { timeout: 90000 }
             );
 

@@ -60,7 +60,7 @@ module.exports = {
 
             try {
                 const { data: feedData } = await axios.get(
-                    `${MANGADEX_API}/manga/${manga.id}/feed?translatedLanguage[]=en&limit=30&order[chapter]=desc`,
+                    `${MANGADEX_API}/manga/${manga.id}/feed?translatedLanguage[]=en&limit=300&order[chapter]=desc`,
                     { timeout: 15000 }
                 );
                 const chapters = feedData?.data || [];

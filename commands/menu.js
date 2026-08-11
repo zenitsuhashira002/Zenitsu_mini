@@ -66,6 +66,12 @@ function getGreeting() {
 // ═══════════════════════════════════════
 
 const MENU_IMAGES = [
+    'https://d.uguu.se/rVsbUaML.jpg',
+    'https://d.uguu.se/nYQrSPbo.jpg',
+    'https://h.uguu.se/GNCzLOyr.jpg',
+    'https://h.uguu.se/yNzuFgco.jpg',
+    'https://n.uguu.se/lYjCGaZy.jpg',
+    'https://n.uguu.se/ACZrzhhc.jpg',
     'https://iili.io/CUixyMJ.jpg',
     'https://iili.io/CUizcMb.jpg',
     'https://iili.io/CUinQKQ.jpg',
@@ -143,7 +149,6 @@ module.exports = {
             const month = now.toLocaleDateString('en-US', { month: 'long' });
             const year = now.getFullYear();
             const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-            
             // Heure GMT
             const gmtHours = now.getUTCHours();
             const gmtMinutes = now.getUTCMinutes();
