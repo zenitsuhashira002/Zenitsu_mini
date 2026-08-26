@@ -1,3 +1,5 @@
+// ./commands/approve.js
+
 'use strict';
 
 module.exports = {
@@ -11,25 +13,19 @@ module.exports = {
             const isGroup = jid.endsWith('@g.us');
 
             if (!isGroup) {
-                await sock.sendMessage(jid, {
-                    text: '❌ This command only works in groups.'
-                }, { quoted: msg });
+                await sock.sendMessage(jid, { text: '❌ This command only works in groups.' }, { quoted: msg });
                 return;
             }
 
             const groupInfo = await getGroupInfo(sock, jid);
 
             if (!isAdmin(groupInfo.admins, senderJid)) {
-                await sock.sendMessage(jid, {
-                    text: '🚫 Only group administrators can approve join requests.'
-                }, { quoted: msg });
+                await sock.sendMessage(jid, { text: '🚫 Only group administrators can approve join requests.' }, { quoted: msg });
                 return;
             }
 
             if (!groupInfo.botIsAdmin) {
-                await sock.sendMessage(jid, {
-                    text: '🤖 Bot needs to be an admin to approve join requests.'
-                }, { quoted: msg });
+                await sock.sendMessage(jid, { text: '🤖 Bot needs to be an admin to approve join requests.' }, { quoted: msg });
                 return;
             }
 
@@ -38,173 +34,116 @@ module.exports = {
             const pendingRequests = await sock.groupRequestParticipantsList(jid);
 
             if (!pendingRequests || pendingRequests.length === 0) {
-                await sock.sendMessage(jid, {
-                    text: '📋 *No Pending Requests*\n\nThere are no pending join requests to approve.'
-                }, { quoted: msg });
+                await sock.sendMessage(jid, { text: '📋 *No Pending Requests*\n\nThere are no pending join requests to approve.' }, { quoted: msg });
                 return;
             }
 
             const style = getCybernovaStyle();
             const input = args.join(' ').toLowerCase();
 
-            // ═══════════════════════════════════════
             // APPROVE ALL
-            // ═══════════════════════════════════════
-
             if (input === 'all' || input === '--all') {
-                let approved = 0;
-                let failed = 0;
-
+                let approved = 0, failed = 0;
                 for (const request of pendingRequests) {
                     try {
                         await sock.groupRequestParticipantsUpdate(jid, [request.jid], 'approve');
                         approved++;
-                    } catch (err) {
-                        failed++;
-                    }
+                    } catch (err) { failed++; }
                 }
 
                 await sock.sendMessage(jid, {
-                    text:
-`✅ *All Requests Approved*
-
-📊 Total: ${pendingRequests.length}
-✅ Approved: ${approved}
-❌ Failed: ${failed}`,
+                    text: `✅ *All Requests Approved*\n\n📊 Total: ${pendingRequests.length}\n✅ Approved: ${approved}\n❌ Failed: ${failed}`,
                     contextInfo: style
                 }, { quoted: msg });
-
-                try { await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
+                await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } }).catch(() => {});
                 return;
             }
 
-            // ═══════════════════════════════════════
             // PARSE NUMBERS
-            // ═══════════════════════════════════════
-
             let numbersToApprove = [];
-
             if (args.length > 0) {
                 const argStr = args.join(' ').replace(/,/g, ' ');
                 const parts = argStr.split(' ');
-
                 for (const part of parts) {
                     if (part.includes('-')) {
                         const [start, end] = part.split('-').map(Number);
                         if (!isNaN(start) && !isNaN(end) && start > 0 && end > 0 && start <= end) {
-                            for (let i = start; i <= end; i++) {
-                                if (i <= pendingRequests.length) {
-                                    numbersToApprove.push(i - 1);
-                                }
-                            }
+                            for (let i = start; i <= end; i++) if (i <= pendingRequests.length) numbersToApprove.push(i - 1);
                         }
                     } else {
                         const num = parseInt(part);
-                        if (!isNaN(num) && num > 0 && num <= pendingRequests.length) {
-                            numbersToApprove.push(num - 1);
-                        }
+                        if (!isNaN(num) && num > 0 && num <= pendingRequests.length) numbersToApprove.push(num - 1);
                     }
                 }
             }
-
             numbersToApprove = [...new Set(numbersToApprove)];
 
-            // ═══════════════════════════════════════
             // SHOW LIST
-            // ═══════════════════════════════════════
-
             if (numbersToApprove.length === 0) {
-                let listText =
-`📋 *Pending Join Requests*
+                let listText = `📋 *Pending Join Requests*\n\nTotal: ${pendingRequests.length}\n\n`;
+                const mentions = [];
 
-Total: ${pendingRequests.length}
+                for (let i = 0; i < pendingRequests.length; i++) {
+                    const req = pendingRequests[i];
+                    const rawNumber = getRawNumber(req.jid);
+                    // Récupération du nom du contact (peut échouer, on garde le numéro)
+                    let name = rawNumber;
+                    try {
+                        name = await sock.getName(req.jid) || rawNumber;
+                    } catch (_) {}
+                    listText += `${i + 1}. ${name} ( @${rawNumber} )\n`;
+                    mentions.push(rawNumber + '@s.whatsapp.net');
+                }
 
-`;
-
-                pendingRequests.forEach((req, index) => {
-                    const mention = `@${req.jid.split('@')[0].split(':')[0]}`;
-                    listText += `*${index + 1}.* ${mention}\n`;
-                });
-
-                listText +=
-`\n📌 *Usage:*
-.approve <number(s)>
-.approve 1 3 5
-.approve 1-5
-.approve all`;
-
-                const allMentions = pendingRequests.map(req => req.jid.split('@')[0].split(':')[0] + '@s.whatsapp.net');
+                listText += `\n📌 *Usage:*\n.approve <number(s)>\n.approve 1 3 5\n.approve 1-5\n.approve all`;
 
                 await sock.sendMessage(jid, {
                     text: listText,
-                    contextInfo: {
-                        mentionedJid: allMentions,
-                        ...style
-                    }
+                    contextInfo: { mentionedJid: mentions, ...style }
                 }, { quoted: msg });
 
-                try { await sock.sendMessage(jid, { react: { text: '📋', key: msg.key } }); } catch (_) {}
+                await sock.sendMessage(jid, { react: { text: '📋', key: msg.key } }).catch(() => {});
                 return;
             }
 
-            // ═══════════════════════════════════════
             // APPROVE SELECTED
-            // ═══════════════════════════════════════
-
-            let approved = 0;
-            let failed = 0;
+            let approved = 0, failed = 0;
             const approvedMentions = [];
 
             for (const index of numbersToApprove) {
                 const request = pendingRequests[index];
                 if (!request) continue;
-
                 try {
                     await sock.groupRequestParticipantsUpdate(jid, [request.jid], 'approve');
                     approved++;
-                    const mention = `@${request.jid.split('@')[0].split(':')[0]}`;
-                    approvedMentions.push(`✅ ${mention}`);
-                } catch (err) {
-                    failed++;
-                }
+                    const rawNumber = getRawNumber(request.jid);
+                    let name = rawNumber;
+                    try { name = await sock.getName(request.jid) || rawNumber; } catch (_) {}
+                    approvedMentions.push(`✅ ${name} ( @${rawNumber} )`);
+                } catch (err) { failed++; }
             }
 
             const allApprovedMentions = numbersToApprove
                 .map(i => pendingRequests[i])
                 .filter(Boolean)
-                .map(req => req.jid.split('@')[0].split(':')[0] + '@s.whatsapp.net');
+                .map(req => getRawNumber(req.jid) + '@s.whatsapp.net');
 
             await sock.sendMessage(jid, {
-                text:
-`✅ *Requests Approved*
-
-📊 Total selected: ${numbersToApprove.length}
-✅ Approved: ${approved}
-❌ Failed: ${failed}
-
-${approvedMentions.join('\n')}`,
-                contextInfo: {
-                    mentionedJid: allApprovedMentions,
-                    ...style
-                }
+                text: `✅ *Requests Approved*\n\n📊 Total selected: ${numbersToApprove.length}\n✅ Approved: ${approved}\n❌ Failed: ${failed}\n\n${approvedMentions.join('\n')}`,
+                contextInfo: { mentionedJid: allApprovedMentions, ...style }
             }, { quoted: msg });
 
-            try { await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
+            await sock.sendMessage(jid, { react: { text: '✅', key: msg.key } }).catch(() => {});
 
         } catch (err) {
             console.error('❌ Approve command error:', err);
-            try { await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
-            await sock.sendMessage(jid, {
-                text: `❌ Failed to process approvals: ${err.message}`
-            }, { quoted: msg });
+            await sock.sendMessage(jid, { react: { text: '❌', key: msg.key } }).catch(() => {});
+            await sock.sendMessage(jid, { text: `❌ Failed to process approvals: ${err.message}` }, { quoted: msg });
         }
     }
 };
 
-// ═══════════════════════════════════════
-// UTILITY FUNCTIONS
-// ═══════════════════════════════════════
-
+// Fonctions utilitaires (inchangées)
 function getRawNumber(jid) {
     if (!jid) return '';
     let num = jid.split('@')[0];
@@ -227,9 +166,7 @@ function isAdmin(admins, userJid) {
 async function getGroupInfo(sock, groupJid) {
     try {
         const metadata = await sock.groupMetadata(groupJid);
-        if (!metadata?.participants) {
-            return { admins: [], botIsAdmin: false };
-        }
+        if (!metadata?.participants) return { admins: [], botIsAdmin: false };
 
         const admins = [];
         const botAllIds = getBotAllIds(sock);
@@ -238,13 +175,9 @@ async function getGroupInfo(sock, groupJid) {
         for (const participant of metadata.participants) {
             const isAdmin = participant.admin === 'admin' || participant.admin === 'superadmin';
             if (!isAdmin) continue;
-
             admins.push(participant.id);
-
             const participantRaw = getRawNumber(participant.id);
-            if (botAllIds.includes(participantRaw)) {
-                botIsAdmin = true;
-            }
+            if (botAllIds.includes(participantRaw)) botIsAdmin = true;
         }
 
         return { admins, botIsAdmin };
@@ -263,4 +196,4 @@ function getCybernovaStyle() {
             serverMessageId: 202,
         },
     };
-}
+                                                                                                                                    }
