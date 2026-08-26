@@ -9,10 +9,12 @@ const axios = require('axios');
 // ═══════════════════════════════════════
 
 const WELCOME_FILE = path.join(process.cwd(), 'database', 'welcome.json');
+const MEDIA_FILE = path.join(process.cwd(), 'database', 'menu_media.json');
 
 const dbDir = path.join(process.cwd(), 'database');
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 if (!fs.existsSync(WELCOME_FILE)) fs.writeFileSync(WELCOME_FILE, '{}');
+if (!fs.existsSync(MEDIA_FILE)) fs.writeFileSync(MEDIA_FILE, JSON.stringify({ images: [], songs: [] }));
 
 function getWelcome() {
     try { return JSON.parse(fs.readFileSync(WELCOME_FILE, 'utf8')); }
@@ -22,6 +24,15 @@ function getWelcome() {
 function saveWelcome(data) {
     try { fs.writeFileSync(WELCOME_FILE, JSON.stringify(data, null, 2)); }
     catch (err) { console.error('❌ Error saving welcome.json:', err); }
+}
+
+function getCustomImages() {
+    try {
+        const media = JSON.parse(fs.readFileSync(MEDIA_FILE, 'utf8'));
+        return Array.isArray(media.images) ? media.images : [];
+    } catch (_) {
+        return [];
+    }
 }
 
 // ═══════════════════════════════════════
@@ -72,8 +83,27 @@ const FALLBACK_IMAGES = [
 
 const DEFAULT_AVATAR = 'https://iili.io/CSAJ38v.jpg';
 
-function getRandomFallback() {
-    return FALLBACK_IMAGES[Math.floor(Math.random() * FALLBACK_IMAGES.length)];
+// Liste des fonds utilisés par Popcat (sera complétée par les images personnalisées)
+const POPCAT_BACKGROUNDS = [
+    'https://iili.io/CSuZmH7.jpg',
+    'https://iili.io/CSuZGcB.jpg',
+    'https://iili.io/CSuZqjs.jpg',
+    'https://iili.io/CSut9Du.jpg',
+    'https://iili.io/CSutBHP.jpg',
+    'https://iili.io/CSutoDg.jpg',
+    'https://iili.io/CSutTiv.jpg',
+    'https://iili.io/CSut5UN.jpg',
+];
+
+function getAllBackgrounds() {
+    const custom = getCustomImages();
+    if (custom.length > 0) return custom;
+    return [...POPCAT_BACKGROUNDS, ...FALLBACK_IMAGES];
+}
+
+function getRandomBackground() {
+    const backgrounds = getAllBackgrounds();
+    return backgrounds[Math.floor(Math.random() * backgrounds.length)];
 }
 
 // ═══════════════════════════════════════
@@ -104,67 +134,143 @@ setInterval(() => {
 }, 60000);
 
 // ═══════════════════════════════════════
-// SEND WELCOME CARD (Popcat API)
+// USER NAME RESOLUTION (évite @lid)
+// ═══════════════════════════════════════
+
+async function getDisplayName(sock, jid) {
+    try {
+        let name = await sock.getName(jid);
+        // Si le nom est uniquement numérique (comme un numéro), on considère que c'est un fallback
+        if (name && /^\d+$/.test(name)) {
+            name = null;
+        }
+        if (name && name.trim().length > 0) return name.trim();
+    } catch (_) {}
+    return 'user'; // fallback
+}
+
+// ═══════════════════════════════════════
+// API GENERATORS
+// ═══════════════════════════════════════
+
+async function generatePopcatWelcome(userName, groupName, memberCount, avatarUrl, backgroundUrl) {
+    const apiUrl = `https://api.popcat.xyz/v2/welcomecard?` +
+        `background=${encodeURIComponent(backgroundUrl)}` +
+        `&text1=User&text2=${encodeURIComponent(`Welcome to ${groupName}`)}` +
+        `&text3=${encodeURIComponent(`Member ${memberCount}`)}` +
+        `&avatar=${encodeURIComponent(avatarUrl)}`;
+
+    const response = await axios.get(apiUrl, {
+        responseType: 'arraybuffer',
+        timeout: 30000,
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    const buffer = Buffer.from(response.data);
+    if (buffer.length > 500) return buffer;
+    throw new Error('Popcat returned small buffer');
+}
+
+async function generateStellarWelcome2(userName, groupName, memberCount, avatarUrl, backgroundUrl) {
+    const apiUrl = `https://api.stellarwa.xyz/generate/welcome2?` +
+        `username=${encodeURIComponent(userName)}` +
+        `&guildName=${encodeURIComponent(groupName)}` +
+        `&memberCount=${memberCount}` +
+        `&avatar=${encodeURIComponent(avatarUrl)}` +
+        `&background=${encodeURIComponent(backgroundUrl)}` +
+        `&key=api-HBpdn`;
+
+    const response = await axios.get(apiUrl, {
+        responseType: 'arraybuffer',
+        timeout: 30000,
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    const buffer = Buffer.from(response.data);
+    if (buffer.length > 500) return buffer;
+    throw new Error('Stellar welcome2 returned small buffer');
+}
+
+async function generateStellarWelcomeImage(userName, groupName, memberCount, guildIconUrl) {
+    const apiUrl = `https://api.stellarwa.xyz/generate/welcome-image?` +
+        `username=${encodeURIComponent(userName)}` +
+        `&guildName=${encodeURIComponent(groupName)}` +
+        `&guildIcon=${encodeURIComponent(guildIconUrl)}` +
+        `&memberCount=${memberCount}`;
+
+    const response = await axios.get(apiUrl, {
+        responseType: 'arraybuffer',
+        timeout: 30000,
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    const buffer = Buffer.from(response.data);
+    if (buffer.length > 500) return buffer;
+    throw new Error('Stellar welcome-image returned small buffer');
+}
+
+// ═══════════════════════════════════════
+// SEND WELCOME CARD (multi-API avec fallback aléatoire)
 // ═══════════════════════════════════════
 
 async function sendWelcomeCard(sock, groupId, userJid, groupName, memberCount) {
     try {
+        // Récupération de l'avatar de l'utilisateur
         let avatarUrl = DEFAULT_AVATAR;
         try { avatarUrl = await sock.profilePictureUrl(userJid, 'image'); } catch (_) {}
 
-        const backgrounds = [
-            'https://iili.io/CSuZmH7.jpg',
-            'https://iili.io/CSuZGcB.jpg',
-            'https://iili.io/CSuZqjs.jpg',
-            'https://iili.io/CSut9Du.jpg',
-            'https://iili.io/CSutBHP.jpg',
-            'https://iili.io/CSutoDg.jpg',
-            'https://iili.io/CSutTiv.jpg',
-            'https://iili.io/CSut5UN.jpg',
+        // Récupération de l'icône du groupe pour Stellar welcome-image
+        let guildIconUrl = DEFAULT_AVATAR;
+        try { guildIconUrl = await sock.profilePictureUrl(groupId, 'image'); } catch (_) {}
+
+        const userName = await getDisplayName(sock, userJid);
+        const backgroundUrl = getRandomBackground();
+
+        // Ordre aléatoire des 3 méthodes
+        const methods = [
+            { name: 'popcat', fn: () => generatePopcatWelcome(userName, groupName, memberCount, avatarUrl, backgroundUrl) },
+            { name: 'stellar2', fn: () => generateStellarWelcome2(userName, groupName, memberCount, avatarUrl, backgroundUrl) },
+            { name: 'stellarImage', fn: () => generateStellarWelcomeImage(userName, groupName, memberCount, guildIconUrl) },
         ];
-        const background = backgrounds[Math.floor(Math.random() * backgrounds.length)];
-
-        const apiUrl = `https://api.popcat.xyz/v2/welcomecard?` +
-            `background=${encodeURIComponent(background)}` +
-            `&text1=User&text2=${encodeURIComponent(`Welcome to ${groupName}`)}` +
-            `&text3=${encodeURIComponent(`Member ${memberCount}`)}` +
-            `&avatar=${encodeURIComponent(avatarUrl)}`;
-
-        const response = await axios.get(apiUrl, {
-            responseType: 'arraybuffer',
-            timeout: 30000,
-            headers: { 'User-Agent': 'Mozilla/5.0' },
-        });
-
-        const buffer = Buffer.from(response.data);
-        if (buffer.length > 500) {
-            await sock.sendMessage(groupId, {
-                image: buffer,
-                caption:
-                    `✮ *𝗪𝗲𝗹𝗰𝗼𝗺𝗲* ✮\n\n` +
-                    `👤 @${userJid.split('@')[0].split(':')[0]}\n` +
-                    `📢 ${groupName}\n` +
-                    `👥 𝗠𝗲𝗺𝗯𝗲𝗿𝘀: ${memberCount}\n\n` +
-                    `𝑼𝒔𝒆 *.𝒘𝒆𝒍𝒄𝒐𝒎𝒆* 𝒐𝒇𝒇 𝒕𝒐 𝒅𝒊𝒔𝒂𝒃𝒍𝒆 𝒕𝒉𝒊𝒔 𝒆𝒗𝒆𝒏𝒕\n` +
-                    '⚡ _Powered by Cybernova_',
-                contextInfo: { mentionedJid: [userJid], ...STYLE },
-            });
-            return true;
+        // Mélange (shuffle)
+        for (let i = methods.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [methods[i], methods[j]] = [methods[j], methods[i]];
         }
+
+        for (const method of methods) {
+            try {
+                const buffer = await method.fn();
+                await sock.sendMessage(groupId, {
+                    image: buffer,
+                    caption:
+                        `✮ *𝗪𝗲𝗹𝗰𝗼𝗺𝗲* ✮\n\n` +
+                        `👤 @${userJid.split('@')[0].split(':')[0]}\n` +
+                        `📢 ${groupName}\n` +
+                        `👥 𝗠𝗲𝗺𝗯𝗲𝗿𝘀: ${memberCount}\n\n` +
+                        `𝑼𝒔𝒆 *.𝒘𝒆𝒍𝒄𝒐𝒎𝒆* 𝒐𝒇𝒇 𝒕𝒐 𝒅𝒊𝒔𝒂𝒃𝒍𝒆 𝒕𝒉𝒊𝒔 𝒆𝒗𝒆𝒏𝒕\n` +
+                        '⚡ _Powered by Cybernova_',
+                    contextInfo: { mentionedJid: [userJid], ...STYLE },
+                });
+                return true;
+            } catch (err) {
+                console.log(`⚠️ ${method.name} welcome failed:`, err.message);
+            }
+        }
+
+        // Toutes les méthodes ont échoué -> on lance un fallback statique
+        return false;
     } catch (err) {
-        console.log('⚠️ Welcome card failed:', err.message);
+        console.log('⚠️ Welcome card overall error:', err.message);
+        return false;
     }
-    return false;
 }
 
 // ═══════════════════════════════════════
-// SEND FALLBACK WELCOME
+// SEND FALLBACK WELCOME (images statiques)
 // ═══════════════════════════════════════
 
 async function sendFallbackWelcome(sock, groupId, userJid, groupName, memberCount) {
     try {
         const userName = userJid.split('@')[0].split(':')[0];
-        const randomImage = getRandomFallback();
+        const randomImage = getRandomBackground();
 
         await sock.sendMessage(groupId, {
             image: { url: randomImage },
@@ -274,10 +380,6 @@ async function welcomeCommand(sock, msg, args, jid) {
         const secondArg = args[1]?.toLowerCase();
         const db = getWelcome();
 
-        // ═══════════════════
-        // OFF ALL (Owner/Bot only)
-        // ═══════════════════
-
         if (subCommand === 'off' && secondArg === 'all') {
             if (!isOwner(sock, senderJid)) {
                 return sock.sendMessage(jid, {
@@ -307,10 +409,6 @@ async function welcomeCommand(sock, msg, args, jid) {
             }, { quoted: msg });
         }
 
-        // ═══════════════════
-        // ON ALL (Owner/Bot only)
-        // ═══════════════════
-
         if (subCommand === 'on' && secondArg === 'all') {
             if (!isOwner(sock, senderJid)) {
                 return sock.sendMessage(jid, {
@@ -339,10 +437,6 @@ async function welcomeCommand(sock, msg, args, jid) {
             }, { quoted: msg });
         }
 
-        // ═══════════════════
-        // ON (single group)
-        // ═══════════════════
-
         if (subCommand === 'on') {
             db[jid] = true;
             saveWelcome(db);
@@ -356,10 +450,6 @@ async function welcomeCommand(sock, msg, args, jid) {
             }, { quoted: msg });
         }
 
-        // ═══════════════════
-        // OFF (single group)
-        // ═══════════════════
-
         if (subCommand === 'off') {
             db[jid] = false;
             saveWelcome(db);
@@ -372,10 +462,6 @@ async function welcomeCommand(sock, msg, args, jid) {
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
-
-        // ═══════════════════
-        // STATUS
-        // ═══════════════════
 
         const status = db[jid] === false ? '❌ OFF' : '✅ ON';
         const prefix = global.PREFIX || '.';
