@@ -2,7 +2,7 @@
 
 module.exports = {
     name: 'approve',
-    aliases: ['accept', 'approveall'],
+    aliases: ['accept', 'request'],
     category: 'admin',
 
     async execute({ sock, msg, args, jid }) {
