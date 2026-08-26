@@ -409,7 +409,7 @@ async function sendMedias(sock, jid, medias, title, platform, sourceUrl, quotedM
 
 module.exports = {
     name: 'aio',
-    aliases: ['download', 'dl', 'allinone'],
+    aliases: ['video', 'dlall', 'allinone'],
     category: 'downloader',
 
     async execute({ sock, msg, args, jid }) {
