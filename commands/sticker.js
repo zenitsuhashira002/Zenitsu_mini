@@ -83,7 +83,7 @@ const videoToSticker = async (inputPath, outputPath, options = {}) => {
 module.exports = {
     name: 's2',
     description: 'Crée un sticker personnalisé',
-    aliases: ['s', 'stiker', 'stk', 'fig', 'sticker'],
+    aliases: ['stick2', 'stiker', 'stk', 'fig', 'sticker2'],
 
     async execute({ sock, msg, args, jid, text, config, stats }) {
         // Utiliser jid au lieu de msg.key.remoteJid
