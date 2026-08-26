@@ -232,7 +232,7 @@ const DOWNLOAD_APIS = [
 
 module.exports = {
     name: 'ytmp3',
-    aliases: ['music', 'song', 'youtube', 'yt'],
+    aliases: ['music', 'youtubemp3'],
     category: 'downloader',
 
     async execute({ sock, msg, args, jid }) {
