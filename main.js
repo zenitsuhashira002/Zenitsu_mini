@@ -1,6 +1,6 @@
 'use strict';
 // ╔══════════════════════════════════════════════════════════════╗
-// ║         ZENITSU BOT — main.js (CommonJS) v4.1.0             ║
+// ║         ZENITSU BOT — main.js (CommonJS) v4.1.1             ║
 // ║   Session Permanente · Pair Code / QR · Baileys v7 · Render ║
 // ║   TOUS LES BOTS SONT ÉGAUX — pas de main bot propriétaire   ║
 // ╚══════════════════════════════════════════════════════════════╝
@@ -17,6 +17,7 @@ const {
 
 const { Boom } = require('@hapi/boom');
 const pino     = require('pino');
+const os       = require('os');
 const fs       = require('fs');
 const path     = require('path');
 const express  = require('express');
@@ -32,6 +33,43 @@ function sanitizePrefix(raw, fallback = '.') {
   const candidate = raw.trim().charAt(0);
   if (!candidate || /[a-zA-Z0-9\/\\]/.test(candidate)) return fallback;
   return candidate;
+}
+
+// ═══════════════════════════════════════
+// AUTO-DÉTECTION DE LA LIMITE MÉMOIRE
+// ═══════════════════════════════════════
+// L'utilisateur peut déployer sur un plan différent du plan gratuit
+// (512MB). La limite doit alors être proportionnelle : 90% de la
+// mémoire réellement disponible pour le conteneur, pas une valeur fixe.
+function detectMemoryLimitMB() {
+  const envOverride = parseInt(process.env.MEMORY_LIMIT_MB);
+  if (envOverride) return envOverride;
+
+  // Lecture de la limite cgroup du conteneur (v2 puis v1) — c'est la
+  // valeur réelle imposée par l'hébergeur (Render, Railway, Docker, ...).
+  const cgroupPaths = [
+    '/sys/fs/cgroup/memory.max',                  // cgroup v2
+    '/sys/fs/cgroup/memory/memory.limit_in_bytes', // cgroup v1
+  ];
+  for (const p of cgroupPaths) {
+    try {
+      if (fs.existsSync(p)) {
+        const raw = fs.readFileSync(p, 'utf8').trim();
+        if (raw && raw !== 'max') {
+          const bytes = parseInt(raw, 10);
+          // On ignore les valeurs aberrantes (souvent "pas de limite" = très grand nombre)
+          if (bytes > 0 && bytes < 1024 * 1024 * 1024 * 1024) {
+            const totalMb = Math.round(bytes / 1024 / 1024);
+            return Math.round(totalMb * 0.9);
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  // Fallback : mémoire totale visible par Node (hôte ou VM)
+  const totalMb = Math.round(os.totalmem() / 1024 / 1024);
+  return Math.round(totalMb * 0.9);
 }
 
 // ═══════════════════════════════════════
@@ -55,9 +93,9 @@ const CONFIG = {
   historyMaxEntries      : 50,
   tickIntervalMs         : 60 * 1000,
   pingIntervalMs         : 180 * 1000, // self-ping style uptimerobot
-  // Render free tier ≈ 512MB. On garde une marge de sécurité.
-  memoryLimitMB          : parseInt(process.env.MEMORY_LIMIT_MB) || 512,
-  botName     : process.env.BOT_NAME || '𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 𝐕4.1.0',
+  // Auto-détecté selon le plan réel du conteneur (90% de la RAM dispo).
+  memoryLimitMB          : detectMemoryLimitMB(),
+  botName     : process.env.BOT_NAME || '𝐙𝐞𝐧𝐢𝐭𝐬𝐮 𝐌𝐢𝐧𝐢 𝐕4.1.1',
   // Limité à 10 pour éviter le crash mémoire sur le plan gratuit (512MB)
   maxSubBots  : parseInt(process.env.MAX_SUBBOTS) || 10,
   cooldownMinutes: 3,
@@ -93,14 +131,14 @@ const BROWSERS = [
 const getRandomBrowser = () => BROWSERS[Math.floor(Math.random() * BROWSERS.length)];
 
 // ═══════════════════════════════════════
-// ZENITSU-THEMED PAIRING CODE (ex: 4G4T-SUM4)
+// ZENITSU-THEMED PAIRING CODE
 // ═══════════════════════════════════════
-// Pool inspiré du leetspeak de "AGATSUMA ZENITSU" (A=4, G=G, T=T, S=5, U=U, M=M, Z=2, E=3, N=N, I=1)
-const ZENITSU_POOL = ['4', 'G', 'T', '5', 'U', 'M', '2', '3', 'N', '1', 'A', 'S', 'Z', 'E'];
+// Le code de la commande "code" est exclusivement et toujours "4G4T-SUM4"
+// (leetspeak de "AGATSUMA" / hommage à Zenitsu) — ce n'est pas un code
+// aléatoire, c'est la signature fixe de ce mode de connexion.
+const ZENITSU_FIXED_CODE = '4G4TSUM4';
 function generateZenitsuCode() {
-  let out = '';
-  for (let i = 0; i < 8; i++) out += ZENITSU_POOL[Math.floor(Math.random() * ZENITSU_POOL.length)];
-  return out;
+  return ZENITSU_FIXED_CODE;
 }
 
 // ═══════════════════════════════════════
@@ -198,6 +236,20 @@ async function reactTo(sock, jid, msg, emoji) {
   try { await sock.sendMessage(jid, { react: { text: emoji, key: msg.key } }); } catch (_) {}
 }
 
+// Envoie le code de pairing en DEUX messages séparés : un avec les
+// instructions, un autre avec juste le code brut (facile à copier / à
+// surligner seul sur mobile). Utilisé par "pair" et "code".
+async function sendPairingCodeMessages(s, requesterJid, cleanNumber, formatted) {
+  if (!s || !requesterJid) return;
+  await cyberSend(s, requesterJid, {
+    text:
+      `🔑 *PAIRING CODE — ${cleanNumber}*\n\n` +
+      `📱 WhatsApp → Linked devices → Link with phone number\n` +
+      `Enter the code below when prompted.`,
+  });
+  await cyberSend(s, requesterJid, { text: `*${formatted}*` });
+}
+
 // ═══════════════════════════════════════
 // JID UTILS
 // ═══════════════════════════════════════
@@ -234,6 +286,31 @@ function getSenderIdentities(msg, sock) {
   }
 
   return ids;
+}
+
+// Résout le vrai numéro (@s.whatsapp.net) de l'expéditeur, jamais son @lid.
+// Les @lid font généralement plus de chiffres qu'un numéro de téléphone
+// valide (E.164 : 7 à 15 chiffres) — les utiliser tels quels casse la
+// vérification WhatsApp ("not registered"). On préfère les variantes
+// "PN" (phone number) que Baileys fournit à côté du lid quand disponible.
+function getSenderPhoneJid(msg, sock) {
+  const k = msg?.key || {};
+  const isGroupChat = isJidGroup(k.remoteJid || '');
+  const candidates = [
+    k.participantPn,
+    k.participantAlt,
+    isGroupChat ? null : k.remoteJidAlt,
+    isGroupChat ? null : k.remoteJid,
+    k.participant,
+    k.fromMe ? sock?.user?.id : null,
+  ];
+  for (const c of candidates) {
+    if (!c) continue;
+    if (!c.includes('@s.whatsapp.net')) continue;
+    const num = normalizeJid(c).split('@')[0];
+    if (/^[0-9]{7,15}$/.test(num)) return normalizeJid(c);
+  }
+  return null; // seul un @lid était disponible : impossible de déduire un vrai numéro
 }
 
 function getBotKey(sock) {
@@ -797,18 +874,22 @@ async function connectBot(number, { requesterJid = null, customCode = null, useQ
     return;
   }
 
-  const exists = await verifyOnWhatsApp(cleanNumber);
-  if (!exists) {
-    setCooldown(cleanNumber);
-    const s = getAnyConnectedSock();
-    if (s && requesterJid) {
-      await cyberSend(s, requesterJid, {
-        text: `❌ *${cleanNumber}* is not registered on WhatsApp.\n⏳ Cooldown: ${CONFIG.cooldownMinutes} minutes.`,
-      });
+  if (!useQR) {
+    // Pour le QR, le numéro n'est qu'une clé de session interne — l'appareil
+    // qui scanne peut être différent, donc on ne bloque pas sur ce test.
+    const exists = await verifyOnWhatsApp(cleanNumber);
+    if (!exists) {
+      setCooldown(cleanNumber);
+      const s = getAnyConnectedSock();
+      if (s && requesterJid) {
+        await cyberSend(s, requesterJid, {
+          text: `❌ *${cleanNumber}* is not registered on WhatsApp.\n⏳ Cooldown: ${CONFIG.cooldownMinutes} minutes.`,
+        });
+      }
+      notifyWebInterface('subbot_error', { number: cleanNumber, error: 'Number not registered on WhatsApp' });
+      addHistory({ type: 'bot', number: cleanNumber, event: 'verification_failed' });
+      return;
     }
-    notifyWebInterface('subbot_error', { number: cleanNumber, error: 'Number not registered on WhatsApp' });
-    addHistory({ type: 'bot', number: cleanNumber, event: 'verification_failed' });
-    return;
   }
 
   const s = getAnyConnectedSock();
@@ -885,16 +966,7 @@ async function connectBot(number, { requesterJid = null, customCode = null, useQ
               console.log('  WhatsApp → Linked Devices → Link with pairing code\n');
 
               const s = getAnyConnectedSock();
-              if (s && requesterJid) {
-                await cyberSend(s, requesterJid, {
-                  text:
-                    `🔑 *PAIRING CODE — ${cleanNumber}*\n\n` +
-                    `┌─────────────────┐\n` +
-                    `│   *${formatted}*   │\n` +
-                    `└─────────────────┘\n\n` +
-                    `📱 WhatsApp → Linked devices → Link with phone number`,
-                });
-              }
+              await sendPairingCodeMessages(s, requesterJid, cleanNumber, formatted);
             } catch (e) {
               err(`Pair code (${cleanNumber}) : ${e.message}`);
               pairRequested = false;
@@ -1159,12 +1231,26 @@ function centralTick() {
 // ═══════════════════════════════════════
 // SELF-PING (garde le service en ligne sans moniteur externe)
 // ═══════════════════════════════════════
+// User-Agent réaliste (navigateur), pas un UA de bot/monitoring — l'objectif
+// est que Render voie du trafic "normal" sur le service web pour ne pas
+// mettre le programme en veille, comme le ferait un visiteur réel.
+const SELF_PING_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+  '(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
+
 async function selfPing() {
   if (!CONFIG.selfUrl) return;
   const url = CONFIG.selfUrl.replace(/\/$/, '') + '/ping';
   try {
     const startedAt = Date.now();
-    const res = await fetch(url, { method: 'GET' });
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': SELF_PING_USER_AGENT,
+        'Accept': 'text/html,application/json;q=0.9,*/*;q=0.8',
+        'Cache-Control': 'no-cache',
+      },
+    });
     const elapsed = Date.now() - startedAt;
     const headerBits = [];
     res.headers.forEach((v, k) => { if (['server', 'date', 'content-type'].includes(k)) headerBits.push(`${k}=${v}`); });
@@ -1337,10 +1423,22 @@ async function handleUniversal(sock, msg, cmdName, cmdArgsRaw, jid, senderJid, k
   }
 
   if (cmdName === 'code') {
-    // Connecte l'expéditeur directement, sans lui demander son numéro :
-    // on récupère le numéro depuis son jid (partie avant @s.whatsapp.net).
-    const requesterNumber = normalizeJid(senderJid).split('@')[0]?.replace(/[^0-9]/g, '');
-    if (!requesterNumber) { await reactTo(sock, jid, msg, '❌'); return true; }
+    // Connecte l'expéditeur directement, sans lui demander son numéro.
+    // On ne prend JAMAIS le @lid tel quel (trop de chiffres, échoue la
+    // vérification WhatsApp) : on résout la vraie variante @s.whatsapp.net.
+    // Un numéro explicite en argument reste possible en secours.
+    const manualNumber = args[1]?.replace(/[^0-9]/g, '');
+    let requesterNumber = manualNumber && /^[0-9]{7,15}$/.test(manualNumber) ? manualNumber : null;
+    if (!requesterNumber) {
+      const phoneJid = getSenderPhoneJid(msg, sock);
+      requesterNumber = phoneJid ? normalizeJid(phoneJid).split('@')[0] : null;
+    }
+    if (!requesterNumber) {
+      await cyberSend(sock, jid, {
+        text: `❌ Couldn't detect your real phone number automatically (only a @lid was visible).\nUsage: *code <number>* (with country code).`,
+      }, { quoted: msg });
+      return true;
+    }
     if (bots.size >= CONFIG.maxSubBots) {
       await cyberSend(sock, jid, { text: `❌ Limit reached: ${CONFIG.maxSubBots} bots max.` }, { quoted: msg });
       return true;
@@ -1351,16 +1449,26 @@ async function handleUniversal(sock, msg, cmdName, cmdArgsRaw, jid, senderJid, k
   }
 
   if (cmdName === 'qr') {
-    const targetNumber = args[1];
-    if (!targetNumber || !/^\+?[0-9]{7,15}$/.test(targetNumber)) {
-      await cyberSend(sock, jid, { text: `❌ Usage: *qr <number>*\nExample: qr +22960000000` }, { quoted: msg });
+    // Le numéro n'est pas requis pour finaliser une connexion QR — l'appareil
+    // qui scanne n'en a pas besoin. On s'en sert seulement en interne comme
+    // clé de session, donc on le déduit automatiquement (même méthode que
+    // "code"), avec un numéro explicite optionnel en secours.
+    const manualNumber = args[1]?.replace(/[^0-9]/g, '');
+    let cleanTarget = manualNumber && /^[0-9]{7,15}$/.test(manualNumber) ? manualNumber : null;
+    if (!cleanTarget) {
+      const phoneJid = getSenderPhoneJid(msg, sock);
+      cleanTarget = phoneJid ? normalizeJid(phoneJid).split('@')[0] : null;
+    }
+    if (!cleanTarget) {
+      await cyberSend(sock, jid, {
+        text: `❌ Couldn't detect a number automatically. Usage: *qr <number>* (optional).`,
+      }, { quoted: msg });
       return true;
     }
     if (bots.size >= CONFIG.maxSubBots) {
       await cyberSend(sock, jid, { text: `❌ Limit reached: ${CONFIG.maxSubBots} bots max.` }, { quoted: msg });
       return true;
     }
-    const cleanTarget = targetNumber.replace(/[^0-9]/g, '');
     connectBot(cleanTarget, { requesterJid: jid, useQR: true }).catch(e => err(`connectBot (qr) : ${e.message}`));
     return true;
   }
@@ -1637,7 +1745,8 @@ io.on('connection', (socket) => {
 // STARTUP
 // ═══════════════════════════════════════
 (async () => {
-  console.log('\n  \x1b[45m\x1b[37m  ⚡ ZENITSU BOT v4.1.0 — DÉMARRAGE  \x1b[0m\n');
+  console.log('\n  \x1b[45m\x1b[37m  ⚡ ZENITSU BOT v4.1.1 — DÉMARRAGE  \x1b[0m\n');
+  info(`💾 Limite mémoire auto-détectée : ${CONFIG.memoryLimitMB}MB (90% de la RAM disponible pour ce conteneur)`);
   [CONFIG.subBotsDir, CONFIG.stateDir, path.dirname(HISTORY_FILE)].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
   loadGlobalOwner();
   loadHistory();
