@@ -681,7 +681,7 @@ _©CybernovA_`
 
 module.exports = {
     name       : 'status',
-    aliases    : ['sys', 'system', 'health', 'ping', 'info', 'diagnostic', 'diag'],
+    aliases    : ['sys', 'system', 'health', 'diagnostic', 'diag'],
     description: 'Full system diagnostic — runtime, memory, CPU, network, Render env & mini-tests',
 
     async execute({ sock, msg, args, jid, commands }) {
