@@ -14,7 +14,7 @@ const STYLE = {
 
 module.exports = {
     name: 'animagine',
-    aliases: ['anime', 'aiimage', 'generate'],
+    aliases: ['animeimg', 'animeimage', 'generateanime'],
     category: 'ai',
 
     async execute({ sock, msg, args, jid }) {
