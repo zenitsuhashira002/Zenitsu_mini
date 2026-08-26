@@ -266,7 +266,7 @@ async function sendMedia(sock, jid, mediaUrl, title, platform, sourceUrl, quoted
 
 module.exports = {
     name: 'dl',
-    aliases: ['download', 'get', 'yt', 'twitter', 'pinterest', 'facebook', 'fb'],
+    aliases: ['download2', 'youtube', 'twitter', 'pint', 'faceb', 'fb2'],
     category: 'downloader',
 
     async execute({ sock, msg, args, jid }) {
