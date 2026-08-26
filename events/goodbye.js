@@ -9,10 +9,12 @@ const axios = require('axios');
 // ═══════════════════════════════════════
 
 const GOODBYE_FILE = path.join(process.cwd(), 'database', 'goodbye.json');
+const MEDIA_FILE = path.join(process.cwd(), 'database', 'menu_media.json');
 
 const dbDir = path.join(process.cwd(), 'database');
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 if (!fs.existsSync(GOODBYE_FILE)) fs.writeFileSync(GOODBYE_FILE, '{}');
+if (!fs.existsSync(MEDIA_FILE)) fs.writeFileSync(MEDIA_FILE, JSON.stringify({ images: [], songs: [] }));
 
 function getGoodbye() {
     try { return JSON.parse(fs.readFileSync(GOODBYE_FILE, 'utf8')); }
@@ -22,6 +24,15 @@ function getGoodbye() {
 function saveGoodbye(data) {
     try { fs.writeFileSync(GOODBYE_FILE, JSON.stringify(data, null, 2)); }
     catch (err) { console.error('❌ Error saving goodbye.json:', err); }
+}
+
+function getCustomImages() {
+    try {
+        const media = JSON.parse(fs.readFileSync(MEDIA_FILE, 'utf8'));
+        return Array.isArray(media.images) ? media.images : [];
+    } catch (_) {
+        return [];
+    }
 }
 
 // ═══════════════════════════════════════
@@ -69,8 +80,20 @@ const FALLBACK_IMAGES = [
 
 const DEFAULT_AVATAR = 'https://iili.io/CSAJ38v.jpg';
 
-function getRandomFallback() {
-    return FALLBACK_IMAGES[Math.floor(Math.random() * FALLBACK_IMAGES.length)];
+// Fonds par défaut pour l'API some-random-api (styles)
+const SOME_RANDOM_API_STYLES = ['gaming1', 'gaming2', 'gaming3', 'gaming4', 'space', 'stars', 'sunset'];
+
+function getAllBackgrounds() {
+    const custom = getCustomImages();
+    if (custom.length > 0) return custom;
+    // Si pas de personnalisé, on utilise FALLBACK_IMAGES pour les fonds statiques.
+    // Pour l'API some-random-api, le fond est géré par le style, donc on garde FALLBACK_IMAGES pour le fallback.
+    return FALLBACK_IMAGES;
+}
+
+function getRandomBackground() {
+    const backgrounds = getAllBackgrounds();
+    return backgrounds[Math.floor(Math.random() * backgrounds.length)];
 }
 
 // ═══════════════════════════════════════
@@ -101,48 +124,116 @@ setInterval(() => {
 }, 60000);
 
 // ═══════════════════════════════════════
-// SEND GOODBYE CARD (Some-Random-API)
+// USER NAME RESOLUTION (évite @lid)
+// ═══════════════════════════════════════
+
+async function getDisplayName(sock, jid) {
+    try {
+        let name = await sock.getName(jid);
+        if (name && /^\d+$/.test(name)) {
+            name = null;
+        }
+        if (name && name.trim().length > 0) return name.trim();
+    } catch (_) {}
+    return 'user';
+}
+
+// ═══════════════════════════════════════
+// API GENERATORS
+// ═══════════════════════════════════════
+
+async function generateSomeRandomGoodbye(userName, groupName, memberCount, avatarUrl) {
+    const style = SOME_RANDOM_API_STYLES[Math.floor(Math.random() * SOME_RANDOM_API_STYLES.length)];
+    const apiUrl = `https://api.some-random-api.com/welcome/img/2/${style}?` +
+        `type=leave&textcolor=yellow&username=${encodeURIComponent(userName)}` +
+        `&guildName=${encodeURIComponent(groupName)}` +
+        `&memberCount=${memberCount}` +
+        `&avatar=${encodeURIComponent(avatarUrl)}`;
+
+    const response = await axios.get(apiUrl, {
+        responseType: 'arraybuffer',
+        timeout: 30000,
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    const buffer = Buffer.from(response.data);
+    if (buffer.length > 500) return buffer;
+    throw new Error('some-random-api returned small buffer');
+}
+
+async function generateStellarByeImage(userName, groupName, memberCount, avatarUrl, guildIconUrl, backgroundUrl) {
+    const apiUrl = `https://api.stellarwa.xyz/generate/bye-image?` +
+        `username=${encodeURIComponent(userName)}` +
+        `&guildName=${encodeURIComponent(groupName)}` +
+        `&guildIcon=${encodeURIComponent(guildIconUrl)}` +
+        `&memberCount=${memberCount}` +
+        `&avatar=${encodeURIComponent(avatarUrl)}` +
+        `&background=${encodeURIComponent(backgroundUrl)}` +
+        `&key=api-HBpdn`;
+
+    const response = await axios.get(apiUrl, {
+        responseType: 'arraybuffer',
+        timeout: 30000,
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    const buffer = Buffer.from(response.data);
+    if (buffer.length > 500) return buffer;
+    throw new Error('Stellar bye-image returned small buffer');
+}
+
+// ═══════════════════════════════════════
+// SEND GOODBYE CARD (multi-API avec fallback aléatoire)
 // ═══════════════════════════════════════
 
 async function sendGoodbyeCard(sock, groupId, userJid, groupName, memberCount) {
     try {
+        // Avatar de l'utilisateur
         let avatarUrl = DEFAULT_AVATAR;
         try { avatarUrl = await sock.profilePictureUrl(userJid, 'image'); } catch (_) {}
 
-        const styles = ['gaming1', 'gaming2', 'gaming3', 'gaming4', 'space', 'stars', 'sunset'];
-        const style = styles[Math.floor(Math.random() * styles.length)];
+        // Icône du groupe pour Stellar
+        let guildIconUrl = DEFAULT_AVATAR;
+        try { guildIconUrl = await sock.profilePictureUrl(groupId, 'image'); } catch (_) {}
 
-        const apiUrl = `https://api.some-random-api.com/welcome/img/2/${style}?` +
-            `type=leave&textcolor=yellow&username=User` +
-            `&guildName=${encodeURIComponent(groupName)}` +
-            `&memberCount=${memberCount}` +
-            `&avatar=${encodeURIComponent(avatarUrl)}`;
+        const userName = await getDisplayName(sock, userJid);
+        const backgroundUrl = getRandomBackground();
 
-        const response = await axios.get(apiUrl, {
-            responseType: 'arraybuffer',
-            timeout: 30000,
-            headers: { 'User-Agent': 'Mozilla/5.0' },
-        });
+        // Méthodes disponibles
+        const methods = [
+            { name: 'some-random-api', fn: () => generateSomeRandomGoodbye(userName, groupName, memberCount, avatarUrl) },
+            { name: 'stellar-bye', fn: () => generateStellarByeImage(userName, groupName, memberCount, avatarUrl, guildIconUrl, backgroundUrl) },
+        ];
 
-        const buffer = Buffer.from(response.data);
-        if (buffer.length > 500) {
-            await sock.sendMessage(groupId, {
-                image: buffer,
-                caption:
-                    `🫂 *Goodbye!*\n\n` +
-                    `👤 @${userJid.split('@')[0].split(':')[0]}\n` +
-                    `📢 ${groupName}\n` +
-                    `👥 ${memberCount} members now.\n\n` +
-                    '🥀 Your presence was useful!\n\n' +
-                    '⚡ _Powered by Cybernova_',
-                contextInfo: { mentionedJid: [userJid], ...STYLE },
-            });
-            return true;
+        // Mélange aléatoire
+        for (let i = methods.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [methods[i], methods[j]] = [methods[j], methods[i]];
         }
+
+        for (const method of methods) {
+            try {
+                const buffer = await method.fn();
+                await sock.sendMessage(groupId, {
+                    image: buffer,
+                    caption:
+                        `🫂 *Goodbye!*\n\n` +
+                        `👤 @${userJid.split('@')[0].split(':')[0]}\n` +
+                        `📢 ${groupName}\n` +
+                        `👥 ${memberCount} members now.\n\n` +
+                        '🥀 Your presence was useful!\n\n' +
+                        '⚡ _Powered by Cybernova_',
+                    contextInfo: { mentionedJid: [userJid], ...STYLE },
+                });
+                return true;
+            } catch (err) {
+                console.log(`⚠️ ${method.name} goodbye failed:`, err.message);
+            }
+        }
+
+        return false;
     } catch (err) {
-        console.log('⚠️ Goodbye card failed:', err.message);
+        console.log('⚠️ Goodbye card overall error:', err.message);
+        return false;
     }
-    return false;
 }
 
 // ═══════════════════════════════════════
@@ -152,7 +243,7 @@ async function sendGoodbyeCard(sock, groupId, userJid, groupName, memberCount) {
 async function sendFallbackGoodbye(sock, groupId, userJid, groupName, memberCount) {
     try {
         const userName = userJid.split('@')[0].split(':')[0];
-        const randomImage = getRandomFallback();
+        const randomImage = getRandomBackground();
 
         await sock.sendMessage(groupId, {
             image: { url: randomImage },
@@ -260,10 +351,6 @@ async function goodbyeCommand(sock, msg, args, jid) {
         const secondArg = args[1]?.toLowerCase();
         const db = getGoodbye();
 
-        // ═══════════════════
-        // OFF ALL (Owner/Bot only)
-        // ═══════════════════
-
         if (subCommand === 'off' && secondArg === 'all') {
             if (!isOwner(sock, senderJid)) {
                 return sock.sendMessage(jid, {
@@ -272,7 +359,6 @@ async function goodbyeCommand(sock, msg, args, jid) {
                 }, { quoted: msg });
             }
 
-            // Désactiver pour tous les groupes
             const allChats = await sock.groupFetchAllParticipating();
             let count = 0;
             for (const gid of Object.keys(allChats)) {
@@ -293,10 +379,6 @@ async function goodbyeCommand(sock, msg, args, jid) {
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
-
-        // ═══════════════════
-        // ON ALL (Owner/Bot only)
-        // ═══════════════════
 
         if (subCommand === 'on' && secondArg === 'all') {
             if (!isOwner(sock, senderJid)) {
@@ -326,10 +408,6 @@ async function goodbyeCommand(sock, msg, args, jid) {
             }, { quoted: msg });
         }
 
-        // ═══════════════════
-        // ON (single group)
-        // ═══════════════════
-
         if (subCommand === 'on') {
             db[jid] = true;
             saveGoodbye(db);
@@ -343,10 +421,6 @@ async function goodbyeCommand(sock, msg, args, jid) {
             }, { quoted: msg });
         }
 
-        // ═══════════════════
-        // OFF (single group)
-        // ═══════════════════
-
         if (subCommand === 'off') {
             db[jid] = false;
             saveGoodbye(db);
@@ -359,10 +433,6 @@ async function goodbyeCommand(sock, msg, args, jid) {
                 contextInfo: STYLE,
             }, { quoted: msg });
         }
-
-        // ═══════════════════
-        // STATUS
-        // ═══════════════════
 
         const status = db[jid] === false ? '❌ OFF' : '✅ ON';
         const prefix = global.PREFIX || '.';
