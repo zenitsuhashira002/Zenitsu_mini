@@ -45,7 +45,7 @@ function execCommand(command) {
 
 module.exports = {
     name: 'toimg',
-    aliases: ['img', 'stickertoimg', 'simg'],
+    aliases: ['stickertoimg', 'simg'],
     category: 'media',
 
     async execute({ sock, msg, args, jid }) {
