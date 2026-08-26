@@ -84,7 +84,7 @@ const IMAGE_APIS = [
 
 module.exports = {
     name: 'generate',
-    aliases: ['gen', 'aiimg', 'imagine', 'create'],
+    aliases: ['gen', 'aiimg', 'create'],
     category: 'ai',
 
     async execute({ sock, msg, args, jid }) {
