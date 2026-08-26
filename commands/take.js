@@ -118,7 +118,7 @@ function parseArgs(args) {
 
 module.exports = {
     name: 'take',
-    aliases: ['steal', 'getsticker', 't', 's'],
+    aliases: ['steal', 'takesticker', 'takestick',],
     category: 'media',
 
     async execute({ sock, msg, args, jid }) {
