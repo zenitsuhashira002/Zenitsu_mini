@@ -90,7 +90,7 @@ const TEMPORARY_SERVICES = [
 
 module.exports = {
     name: 'tourl',
-    aliases: ['upload', 'tempurl', 'uploadtemp'],
+    aliases: ['tourltemp', 'tempurl', 'uploadtemp'],
     category: 'tools',
 
     async execute({ sock, msg, args, jid }) {
