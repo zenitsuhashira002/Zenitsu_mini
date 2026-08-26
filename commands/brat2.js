@@ -13,7 +13,7 @@ if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
 
 module.exports = {
     name: 'brat2',
-    aliases: ['bratv', 'brat-video', 'textvideo'],
+    aliases: ['bratv2', 'brat-video2', 'textsticker'],
     description: 'Transform text into a stylish video and sticker',
 
     async execute({ sock, msg, args, jid, text, config, stats }) {
