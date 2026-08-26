@@ -39,7 +39,7 @@ async function uploadToCatbox(buffer, ext = 'mp3') {
 
 module.exports = {
     name: 'shazam',
-    aliases: ['recognize', 'identify', 'lyrics', 'whatsong'],
+    aliases: ['recognize', 'identify', 'whatsong'],
     category: 'search',
 
     async execute({ sock, msg, args, jid }) {
