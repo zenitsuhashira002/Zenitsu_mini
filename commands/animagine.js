@@ -14,7 +14,7 @@ const STYLE = {
 
 module.exports = {
     name: 'animagine',
-    aliases: ['animeimg', 'animeimage', 'generateanime'],
+    aliases: ['animeimage', 'animeimg', 'generateanime'],
     category: 'ai',
 
     async execute({ sock, msg, args, jid }) {
@@ -40,22 +40,43 @@ module.exports = {
             await sock.sendMessage(jid, { react: { text: '🎨', key: msg.key } });
 
             const url = `https://apis.davidcyriltech.my.id/animagine?prompt=${encodeURIComponent(prompt)}`;
-            const response = await axios.get(url, { timeout: 60000 });
+            const response = await axios.get(url, {
+                timeout: 60000,
+                headers: { 'User-Agent': 'Mozilla/5.0' }
+            });
             const data = response.data;
 
-            if (!data?.success || !data?.cdn_url) {
-                throw new Error('Invalid response from API');
+            if (!data?.success) {
+                throw new Error('API response missing success flag');
             }
 
-            // Télécharger l'image
-            const imgResponse = await axios.get(data.cdn_url, {
-                responseType: 'arraybuffer',
-                timeout: 30000,
-            });
-            const buffer = Buffer.from(imgResponse.data);
+            let imageBuffer;
+
+            // Cas 1 : l'API renvoie directement un champ image en base64
+            if (data.image && typeof data.image === 'string' && data.image.startsWith('data:image')) {
+                const base64 = data.image.split(',')[1];
+                imageBuffer = Buffer.from(base64, 'base64');
+            }
+            // Cas 2 : l'API renvoie un CDN URL
+            else if (data.cdn_url || data.url) {
+                const imageUrl = data.cdn_url || data.url;
+                const imgResponse = await axios.get(imageUrl, {
+                    responseType: 'arraybuffer',
+                    timeout: 30000,
+                    headers: { 'User-Agent': 'Mozilla/5.0' }
+                });
+                imageBuffer = Buffer.from(imgResponse.data);
+            } else {
+                throw new Error('No image URL or base64 found in API response');
+            }
+
+            // Vérification de la taille minimale (évite les images vides)
+            if (!imageBuffer || imageBuffer.length < 1024) {
+                throw new Error('Downloaded image is too small or empty');
+            }
 
             await sock.sendMessage(jid, {
-                image: buffer,
+                image: imageBuffer,
                 caption: `🎨 *Animagine AI*\n\n` +
                          `📝 *Prompt:* ${prompt}\n` +
                          `📐 *Ratio:* ${data.ratio || '1:1'}\n\n` +
