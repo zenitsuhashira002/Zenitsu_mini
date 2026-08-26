@@ -14,7 +14,7 @@ const STYLE = {
 
 module.exports = {
     name: 'anime',
-    aliases: ['animu', 'manga'],
+    aliases: ['animu', 'animesearch'],
     category: 'search',
 
     async execute({ sock, msg, args, jid }) {
