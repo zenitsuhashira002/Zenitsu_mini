@@ -56,7 +56,7 @@ const SEARCH_APIS = [
 
 module.exports = {
     name: 'pinterest',
-    aliases: ['pin', 'pindl', 'pinsearch'],
+    aliases: ['pindl', 'pinsearch'],
     category: 'search',
 
     async execute({ sock, msg, args, jid }) {
