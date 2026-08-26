@@ -12,7 +12,7 @@ const STYLE = {
     forwardedNewsletterMessageInfo: {
         newsletterJid: '120363425394543602@newsletter',
         newsletterName: '모🅒🅨🅑🅔🅡🅝🅞🅥🅐 🌟',
-        serverMessageId: 202,
+        serverMessageId: 340,
     },
 };
 
@@ -101,8 +101,8 @@ const LYRICS_APIS = [
 // ═══════════════════════════════════════
 
 module.exports = {
-    name: 'lyrics',
-    aliases: ['paroles', 'songtext', 'lirik'],
+    name: 'lyrics2',
+    aliases: ['paroles2', 'songtext2', 'lirik2'],
     category: 'search',
 
     async execute({ sock, msg, args, jid }) {
