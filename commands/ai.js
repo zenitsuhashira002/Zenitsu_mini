@@ -114,7 +114,7 @@ function getLocalFallback(query) {
 
 module.exports = {
     name: 'ai',
-    aliases: ['gpt', 'chatgpt', 'openai', 'claude', 'deepseek'],
+    aliases: ['gpt', 'chatgpt', 'openai'],
     category: 'ai',
 
     async execute({ sock, msg, args, jid }) {
