@@ -4,7 +4,7 @@ const antilinkModule = require('../events/antilink2');
 
 module.exports = {
     name: 'antilink2',
-    aliases: ['antilinks', 'nolinks', 'nolink'],
+    aliases: ['antilien', 'nolinks', 'nolink'],
     category: 'group',
 
     execute: async ({ sock, msg, args, jid }) => {
