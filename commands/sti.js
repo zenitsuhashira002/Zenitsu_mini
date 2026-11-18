@@ -1,4 +1,3 @@
-
 // ./commands/sticker.js
 
 const fs = require('fs');
@@ -10,7 +9,7 @@ const execPromise = util.promisify(exec);
 
 module.exports = {
     name: 'sticker',
-    aliases: ['s', 'sticker', 'stick', 'makeit'],
+    aliases: ['sticker', 'stick', 'makeit'],
     category: 'tools',
 
     async execute({ sock, msg, args, jid }) {
